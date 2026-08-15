@@ -1,7 +1,8 @@
 ![Lightframe. Banner](LightframeBanner.png)
 
-# Lightframes. ✨
-> 수많은 빛을 여러 종류의 Lightframe에. 그리고 그들이 모여 만든 Lightframes. <br>
-> 역대 Lightframe.들과 Light를 소개합니다. ✨
+# ✨ Frame.
 
-곧 공개됩니다.
+> 빛나는 수많은 빛, Light가 모여 하나의 Lightframe을 만듭니다. <br>
+> 지금까지 함께해 온 Light와, 그 빛이 담긴 Frame을 소개합니다.
+
+
