@@ -1,4 +1,4 @@
-![Lightframe. Banner](LightframeBanner.png)
+![Lightframe. Banner](assets/LightframeBanner.png)
 
 # ✨ Frame.
 
