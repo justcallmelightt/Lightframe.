@@ -26,7 +26,7 @@
     flowTracks.forEach((track) => track.insertAdjacentHTML("beforeend", track.innerHTML));
 
     const boostTechnology = () => {
-      if (reduceMotion || motionSuspended) return;
+      if (reduceMotion || motionSuspended || flowStage?.matches(":hover")) return;
       flowTracks.forEach((track) => {
         const animation = track.getAnimations()[0];
         if (!animation) return;
@@ -51,6 +51,14 @@
       });
     };
 
+    const cancelTechnologyBoost = () => {
+      flowTracks.forEach((track) => {
+        cancelAnimationFrame(track._speedRaf || 0);
+        track._speedRaf = 0;
+        track.getAnimations()[0]?.updatePlaybackRate(1);
+      });
+    };
+
     if (flowStage) {
       let flowWasVisible = false;
       const flowObserver = new IntersectionObserver(([entry]) => {
@@ -58,7 +66,7 @@
         flowWasVisible = entry.isIntersecting;
       }, { threshold: .48 });
       flowObserver.observe(flowStage);
-      flowStage.addEventListener("pointerenter", boostTechnology, { passive: true });
+      flowStage.addEventListener("pointerenter", cancelTechnologyBoost, { passive: true });
     }
 
     if (!reduceMotion && window.matchMedia("(pointer: fine)").matches) {
