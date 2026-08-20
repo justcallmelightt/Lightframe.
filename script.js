@@ -22,8 +22,44 @@
       });
     });
 
+    document.querySelectorAll("[data-flow-text]").forEach((element) => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach((node) => {
+        if (!node.textContent.trim()) return;
+        const fragment = document.createDocumentFragment();
+        node.textContent.split(/(\s+)/).forEach((part) => {
+          if (!part) return;
+          if (/^\s+$/.test(part)) {
+            fragment.append(part);
+            return;
+          }
+          const word = document.createElement("span");
+          word.className = "flow-word";
+          word.textContent = part;
+          fragment.append(word);
+        });
+        node.replaceWith(fragment);
+      });
+    });
+
     const flowTracks = [...document.querySelectorAll("[data-flow-track]")];
     flowTracks.forEach((track) => track.insertAdjacentHTML("beforeend", track.innerHTML));
+
+    const alignFlowGradient = () => {
+      flowTracks.forEach((track) => {
+        const cycleWidth = track.scrollWidth / 2;
+        if (!cycleWidth) return;
+        const paletteWidth = Math.min(2600,Math.max(1400,window.innerWidth * 1.35));
+        track.querySelectorAll(".stack-pill").forEach((pill) => {
+          const offset = pill.offsetLeft % paletteWidth;
+          pill.style.setProperty("--flow-gradient-width", `${paletteWidth}px`);
+          pill.style.setProperty("--flow-gradient-offset", `${-offset}px`);
+        });
+      });
+    };
+    requestAnimationFrame(alignFlowGradient);
 
     const boostTechnology = () => {
       if (reduceMotion || motionSuspended || flowStage?.matches(":hover")) return;
@@ -317,6 +353,12 @@
       return keyframes;
     };
 
+    const createTextFlowFrames = (direction) => [
+      { opacity: 0, filter: "blur(10px)", transform: `translate3d(0,${direction * 0.52}em,0) scaleY(.94)` },
+      { offset: .62, opacity: 1, filter: "blur(0px)", transform: `translate3d(0,${direction * -0.045}em,0) scaleY(1.012)` },
+      { opacity: 1, filter: "blur(0px)", transform: "translate3d(0,0,0) scaleY(1)" }
+    ];
+
     const animateScene = (frame, direction = 1) => {
       if (!frame) return;
       const sceneKey = [...sceneSelectors.keys()].find((key) => frame.classList.contains(key));
@@ -358,6 +400,21 @@
           item.style.removeProperty("will-change");
           item.classList.remove("is-springing");
         }).catch(() => {});
+
+        item.querySelectorAll(".flow-word").forEach((word, wordIndex) => {
+          word.getAnimations().forEach((wordAnimation) => wordAnimation.cancel());
+          word.style.willChange = "transform, opacity, filter";
+          const wordAnimation = word.animate(createTextFlowFrames(direction),{
+            duration: 560,
+            delay: index * 20 + wordIndex * 34,
+            easing: "cubic-bezier(.16,1,.3,1)",
+            fill: "both"
+          });
+          wordAnimation.finished.then(() => {
+            if (word.getAnimations().includes(wordAnimation)) wordAnimation.cancel();
+            word.style.removeProperty("will-change");
+          }).catch(() => word.style.removeProperty("will-change"));
+        });
       });
     };
 
@@ -396,6 +453,7 @@
       if (reduceMotion || !frameFlash) {
         alignFrame(targetIndex);
         animateScene(target, direction);
+        if (target === flowStage) requestAnimationFrame(boostTechnology);
         if (!wheelInputReady) releaseWheelInput();
         return;
       }
@@ -405,7 +463,7 @@
       body.classList.add("is-transitioning");
       frameFlash.style.setProperty("--flash-color", target.dataset.frameColor || "#0066ff");
       frameFlash.style.setProperty("--flash-ink", target.dataset.frameInk || "#ffffff");
-      frameFlashName.textContent = target.dataset.frameName || "LIGHTFRAME";
+      frameFlashName.textContent = target.dataset.frameName || "Lightframe.";
       frameFlashIndex.textContent = `${String(targetIndex + 1).padStart(2,"0")} / ${String(frames.length).padStart(2,"0")}`;
       frameFlash.style.opacity = "1";
       frameFlash.style.transform = `translate3d(0,${direction > 0 ? 110 : -110}%,0)`;
@@ -468,6 +526,7 @@
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
+        if (target === flowStage) requestAnimationFrame(boostTechnology);
         if (!wheelInputReady) releaseWheelInput();
       };
       requestAnimationFrame(renderTransition);
@@ -526,5 +585,6 @@
     }, { passive: true });
 
     window.addEventListener("resize", () => {
+      alignFlowGradient();
       if (!frameWheelLocked) alignFrame(nearestFrameIndex());
     }, { passive: true });
