@@ -22,7 +22,7 @@
       });
     });
 
-    document.querySelectorAll("[data-flow-text]").forEach((element) => {
+    document.querySelectorAll("[data-flow-text], .principle h3, .interest h3").forEach((element) => {
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       const textNodes = [];
       while (walker.nextNode()) textNodes.push(walker.currentNode);
@@ -44,22 +44,12 @@
       });
     });
 
+    document.querySelectorAll(".hero-bottom p, .principle p, .interest p, .contact-copy").forEach((element) => {
+      element.classList.add("text-drift");
+    });
+
     const flowTracks = [...document.querySelectorAll("[data-flow-track]")];
     flowTracks.forEach((track) => track.insertAdjacentHTML("beforeend", track.innerHTML));
-
-    const alignFlowGradient = () => {
-      flowTracks.forEach((track) => {
-        const cycleWidth = track.scrollWidth / 2;
-        if (!cycleWidth) return;
-        const paletteWidth = Math.min(2600,Math.max(1400,window.innerWidth * 1.35));
-        track.querySelectorAll(".stack-pill").forEach((pill) => {
-          const offset = pill.offsetLeft % paletteWidth;
-          pill.style.setProperty("--flow-gradient-width", `${paletteWidth}px`);
-          pill.style.setProperty("--flow-gradient-offset", `${-offset}px`);
-        });
-      });
-    };
-    requestAnimationFrame(alignFlowGradient);
 
     const boostTechnology = () => {
       if (reduceMotion || motionSuspended || flowStage?.matches(":hover")) return;
@@ -134,7 +124,10 @@
         intro.animate(
           [{ opacity: 1, filter: "blur(0px)", transform: "scaleY(1)" }, { opacity: 0, filter: "blur(10px)", transform: "scaleY(.94)" }],
           { duration: 720, easing: "cubic-bezier(.16,1,.3,1)", fill: "forwards" }
-        ).finished.then(() => intro.remove());
+        ).finished.then(() => {
+          intro.remove();
+          requestAnimationFrame(() => animateScene(frames[nearestFrameIndex()], 1));
+        });
       }, 900);
     }
 
@@ -354,9 +347,15 @@
     };
 
     const createTextFlowFrames = (direction) => [
-      { opacity: 0, filter: "blur(10px)", transform: `translate3d(0,${direction * 0.52}em,0) scaleY(.94)` },
-      { offset: .62, opacity: 1, filter: "blur(0px)", transform: `translate3d(0,${direction * -0.045}em,0) scaleY(1.012)` },
+      { opacity: 0, filter: "blur(7px)", transform: `translate3d(0,${direction * 0.42}em,0) scaleY(.955)` },
+      { offset: .68, opacity: 1, filter: "blur(0px)", transform: `translate3d(0,${direction * -0.025}em,0) scaleY(1.006)` },
       { opacity: 1, filter: "blur(0px)", transform: "translate3d(0,0,0) scaleY(1)" }
+    ];
+
+    const createBodyTextFrames = (direction) => [
+      { opacity: 0, filter: "blur(4px)", transform: `translate3d(0,${direction * 10}px,0)` },
+      { offset: .72, opacity: 1, filter: "blur(0px)", transform: `translate3d(0,${direction * -1}px,0)` },
+      { opacity: 1, filter: "blur(0px)", transform: "translate3d(0,0,0)" }
     ];
 
     const animateScene = (frame, direction = 1) => {
@@ -405,8 +404,8 @@
           word.getAnimations().forEach((wordAnimation) => wordAnimation.cancel());
           word.style.willChange = "transform, opacity, filter";
           const wordAnimation = word.animate(createTextFlowFrames(direction),{
-            duration: 560,
-            delay: index * 20 + wordIndex * 34,
+            duration: 620,
+            delay: index * 20 + Math.min(wordIndex,14) * 28,
             easing: "cubic-bezier(.16,1,.3,1)",
             fill: "both"
           });
@@ -414,6 +413,21 @@
             if (word.getAnimations().includes(wordAnimation)) wordAnimation.cancel();
             word.style.removeProperty("will-change");
           }).catch(() => word.style.removeProperty("will-change"));
+        });
+
+        item.querySelectorAll(".text-drift").forEach((text, textIndex) => {
+          text.getAnimations().forEach((textAnimation) => textAnimation.cancel());
+          text.style.willChange = "transform, opacity, filter";
+          const textAnimation = text.animate(createBodyTextFrames(direction),{
+            duration: 540,
+            delay: index * 22 + textIndex * 42 + 90,
+            easing: "cubic-bezier(.16,1,.3,1)",
+            fill: "both"
+          });
+          textAnimation.finished.then(() => {
+            if (text.getAnimations().includes(textAnimation)) textAnimation.cancel();
+            text.style.removeProperty("will-change");
+          }).catch(() => text.style.removeProperty("will-change"));
         });
       });
     };
@@ -490,7 +504,6 @@
           }
           frameFlash.style.transform = "translate3d(0,0,0)";
           alignFrame(targetIndex);
-          animateScene(target, direction);
           phase = "hold";
           holdStartedAt = time;
           position = 0;
@@ -526,6 +539,7 @@
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
+        animateScene(target, direction);
         if (target === flowStage) requestAnimationFrame(boostTechnology);
         if (!wheelInputReady) releaseWheelInput();
       };
@@ -585,6 +599,5 @@
     }, { passive: true });
 
     window.addEventListener("resize", () => {
-      alignFlowGradient();
       if (!frameWheelLocked) alignFrame(nearestFrameIndex());
     }, { passive: true });
