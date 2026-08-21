@@ -58,7 +58,22 @@
     });
 
     const flowTracks = [...document.querySelectorAll("[data-flow-track]")];
-    flowTracks.forEach((track) => track.insertAdjacentHTML("beforeend", track.innerHTML));
+    flowTracks.forEach((track) => {
+      const source = track.innerHTML;
+      const sourceCount = track.children.length;
+      let segmentCopies = 1;
+
+      while (track.scrollWidth < window.innerWidth * 1.25 && segmentCopies < 6) {
+        track.insertAdjacentHTML("beforeend", source);
+        segmentCopies += 1;
+      }
+
+      const loopSegment = track.innerHTML;
+      track.insertAdjacentHTML("beforeend", loopSegment);
+      [...track.children].forEach((pill, index) => {
+        if (index >= sourceCount) pill.setAttribute("aria-hidden", "true");
+      });
+    });
 
     const boostTechnology = () => {
       if (reduceMotion || motionSuspended || flowStage?.matches(":hover")) return;
