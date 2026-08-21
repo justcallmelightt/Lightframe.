@@ -22,7 +22,16 @@
       });
     });
 
-    document.querySelectorAll("[data-flow-text], .principle h3, .interest h3").forEach((element) => {
+    document.querySelectorAll([
+      "[data-flow-text]",
+      ".section-label",
+      ".statement-side",
+      ".principle h3",
+      ".interest-meta",
+      ".interest h3",
+      ".flow-note",
+      ".footer-line"
+    ].join(",")).forEach((element) => {
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
       const textNodes = [];
       while (walker.nextNode()) textNodes.push(walker.currentNode);
@@ -318,11 +327,11 @@
     };
 
     const sceneSelectors = new Map([
-      ["hero", ".hero-meta,.code-label,.hero-title .line,.hero-bottom"],
-      ["about", ".section-label,.statement-side,.statement-copy,.principles"],
-      ["now", ".section-label,.now-title,.interest-list"],
+      ["hero", ".hero-meta,.code-label,.hero-title .line,.scroll-cue,.hero-description"],
+      ["about", ".section-label,.statement-side,.statement-copy,.principle"],
+      ["now", ".section-label,.now-title,.interest"],
       ["stack-section", ".section-label,.stack-heading h2,.flow-field,.flow-note"],
-      ["contact", ".section-label,.contact-title,.contact-bottom,.footer-line"]
+      ["contact", ".section-label,.contact-title,.contact-copy,.magnetic,.footer-line"]
     ]);
 
     const createSceneSpringFrames = (offset, noScale) => {
@@ -383,7 +392,7 @@
       frame._sceneToken = sceneToken;
       items.forEach((item, index) => {
         const offset = direction * Math.min(32, 18 + index * 4);
-        const noScale = item.classList.contains("principles");
+        const noScale = item.classList.contains("principle") || item.classList.contains("interest");
         item.style.willChange = "transform,opacity";
         const animation = item.animate(createSceneSpringFrames(offset,noScale),{
           duration: 480,
@@ -400,7 +409,11 @@
           item.classList.remove("is-springing");
         }).catch(() => {});
 
-        item.querySelectorAll(".flow-word").forEach((word, wordIndex) => {
+        const flowWords = [
+          ...(item.matches(".flow-word") ? [item] : []),
+          ...item.querySelectorAll(".flow-word")
+        ];
+        flowWords.forEach((word, wordIndex) => {
           word.getAnimations().forEach((wordAnimation) => wordAnimation.cancel());
           word.style.willChange = "transform, opacity, filter";
           const wordAnimation = word.animate(createTextFlowFrames(direction),{
@@ -415,7 +428,11 @@
           }).catch(() => word.style.removeProperty("will-change"));
         });
 
-        item.querySelectorAll(".text-drift").forEach((text, textIndex) => {
+        const driftingText = [
+          ...(item.matches(".text-drift") ? [item] : []),
+          ...item.querySelectorAll(".text-drift")
+        ];
+        driftingText.forEach((text, textIndex) => {
           text.getAnimations().forEach((textAnimation) => textAnimation.cancel());
           text.style.willChange = "transform, opacity, filter";
           const textAnimation = text.animate(createBodyTextFrames(direction),{
