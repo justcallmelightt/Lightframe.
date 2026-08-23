@@ -5,9 +5,11 @@
     const hero = document.querySelector(".hero");
     const interestCards = [...document.querySelectorAll(".interest")];
     const flowStage = document.querySelector("[data-flow-stage]");
+    const siteHeader = document.querySelector(".site-header");
     const frameFlash = document.querySelector(".frame-flash");
     const frameFlashName = document.querySelector(".frame-flash-name");
     const frameFlashIndex = document.querySelector(".frame-flash-index");
+    const gsapEngine = window.gsap;
     let motionSuspended = false;
 
     document.querySelectorAll("[data-split]").forEach((element) => {
@@ -25,11 +27,20 @@
     document.querySelectorAll([
       "[data-flow-text]",
       ".section-label",
+      ".hero-meta",
+      ".code-label",
+      ".scroll-cue",
+      ".hero-description",
       ".statement-side",
+      ".principle-index",
       ".principle h3",
+      ".principle p",
       ".interest-meta",
       ".interest h3",
+      ".interest p",
       ".flow-note",
+      ".contact-copy",
+      ".magnetic-inner",
       ".footer-line"
     ].join(",")).forEach((element) => {
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
@@ -139,21 +150,76 @@
       });
     }
 
-    if (reduceMotion) {
+    const finishIntro = () => {
       body.classList.add("ready");
       intro?.remove();
-    } else {
-      window.setTimeout(() => {
+      requestAnimationFrame(() => syncSceneFromViewport(true));
+    };
+
+    const playIntro = () => {
+      if (!intro || reduceMotion) {
         body.classList.add("ready");
-        intro.animate(
-          [{ opacity: 1, filter: "blur(0px)", transform: "scaleY(1)" }, { opacity: 0, filter: "blur(10px)", transform: "scaleY(.94)" }],
-          { duration: 720, easing: "cubic-bezier(.16,1,.3,1)", fill: "forwards" }
-        ).finished.then(() => {
-          intro.remove();
-          requestAnimationFrame(() => animateScene(frames[nearestFrameIndex()], 1));
+        intro?.remove();
+        return;
+      }
+      let hasVisited = false;
+      try {
+        hasVisited = sessionStorage.getItem("lightframe-intro-seen") === "1";
+        sessionStorage.setItem("lightframe-intro-seen", "1");
+      } catch (_) {}
+
+      intro.insertAdjacentHTML("afterbegin", `
+        <div class="intro-spectrum" aria-hidden="true"></div>
+        <div class="intro-grid" aria-hidden="true"></div>
+        <div class="intro-particles" aria-hidden="true">${Array.from({ length: 14 }, (_, index) => `<i style="--particle:${index}"></i>`).join("")}</div>
+        <div class="intro-code" aria-hidden="true"><span>const message =</span><strong>“일상의 문제를 웹으로 정리합니다”;</strong></div>
+        <div class="intro-meter" aria-hidden="true"><i></i></div>
+      `);
+
+      if (!gsapEngine) {
+        const fallbackLockup = intro.querySelector(".intro-lockup");
+        if (fallbackLockup) fallbackLockup.style.opacity = "1";
+        intro.querySelectorAll(".intro-code > *").forEach((line) => {
+          line.style.opacity = "1";
+          line.style.transform = "none";
         });
-      }, 900);
-    }
+        window.setTimeout(() => {
+          body.classList.add("ready");
+          intro.animate(
+            [{ opacity: 1, transform: "translate3d(0,0,0)" }, { opacity: 0, transform: "translate3d(0,-5%,0)" }],
+            { duration: hasVisited ? 320 : 650, easing: "cubic-bezier(.16,1,.3,1)", fill: "forwards" }
+          ).finished.then(finishIntro).catch(finishIntro);
+        }, hasVisited ? 420 : 1250);
+        return;
+      }
+
+      const durationScale = hasVisited ? .4 : 1;
+      const particles = intro.querySelectorAll(".intro-particles i");
+      gsapEngine.set(particles, {
+        x: (index) => Math.cos(index / particles.length * Math.PI * 2) * (hasVisited ? 100 : 260),
+        y: (index) => Math.sin(index / particles.length * Math.PI * 2) * (hasVisited ? 70 : 190),
+        scale: 0,
+        opacity: 0
+      });
+      gsapEngine.timeline({ onComplete: finishIntro })
+        .fromTo(".intro-spectrum", { scaleX: .035, scaleY: .18, opacity: .68 }, { scaleX: 1.08, scaleY: 1, opacity: 1, duration: .85 * durationScale, ease: "expo.out" })
+        .to(particles, { scale: 1, opacity: .9, x: 0, y: 0, duration: .68 * durationScale, stagger: .018 * durationScale, ease: "power4.in" }, 0)
+        .to(particles, {
+          x: (index) => Math.cos(index / particles.length * Math.PI * 2) * (hasVisited ? 170 : 560),
+          y: (index) => Math.sin(index / particles.length * Math.PI * 2) * (hasVisited ? 100 : 330),
+          scale: 0,
+          opacity: 0,
+          duration: .72 * durationScale,
+          ease: "expo.out"
+        }, .52 * durationScale)
+        .fromTo(".intro-lockup", { opacity: 0, scale: .82 }, { opacity: 1, scale: 1, duration: .72 * durationScale, ease: "expo.out" }, .42 * durationScale)
+        .fromTo(".intro-code > *", { opacity: 0, yPercent: 110, rotateX: -35 }, { opacity: 1, yPercent: 0, rotateX: 0, duration: .58 * durationScale, stagger: .08 * durationScale, ease: "power4.out" }, .72 * durationScale)
+        .fromTo(".intro-meter i", { scaleX: 0 }, { scaleX: 1, duration: .9 * durationScale, ease: "power2.inOut" }, .68 * durationScale)
+        .to(".intro-lockup,.intro-code", { opacity: 0, y: -18, duration: .34 * durationScale, ease: "power3.in" }, hasVisited ? .46 : 1.82)
+        .to(intro, { yPercent: -100, duration: .62 * durationScale, ease: "expo.inOut" }, ">-.03");
+    };
+
+    playIntro();
 
     const revealObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
@@ -193,7 +259,6 @@
       principleRows.forEach((row) => {
         row.addEventListener("pointerenter", () => row.classList.remove("is-sweeping"));
       });
-      principles.addEventListener("pointerleave", runPrincipleSweep);
     }
 
     let scrollTicking = false;
@@ -370,11 +435,15 @@
       return keyframes;
     };
 
-    const createTextFlowFrames = (direction) => [
-      { opacity: 0, filter: "blur(7px)", transform: `translate3d(0,${direction * 0.42}em,0) scaleY(.955)` },
-      { offset: .68, opacity: 1, filter: "blur(0px)", transform: `translate3d(0,${direction * -0.025}em,0) scaleY(1.006)` },
-      { opacity: 1, filter: "blur(0px)", transform: "translate3d(0,0,0) scaleY(1)" }
-    ];
+    const createTextFlowFrames = (direction, index) => {
+      const sway = index % 2 ? .022 : -.022;
+      return [
+        { opacity: 0, filter: "blur(9px)", transform: `translate3d(${sway}em,${direction * .34}em,0) scale(.975,.93)` },
+        { offset: .56, opacity: .94, filter: "blur(1.8px)", transform: `translate3d(${(sway * -.3).toFixed(3)}em,${direction * -.035}em,0) scale(1.006,1.018)` },
+        { offset: .8, opacity: 1, filter: "blur(0px)", transform: `translate3d(0,${direction * .008}em,0) scale(.999,1)` },
+        { opacity: 1, filter: "blur(0px)", transform: "translate3d(0,0,0) scale(1)" }
+      ];
+    };
 
     const createBodyTextFrames = (direction) => [
       { opacity: 0, filter: "blur(4px)", transform: `translate3d(0,${direction * 10}px,0)` },
@@ -382,12 +451,78 @@
       { opacity: 1, filter: "blur(0px)", transform: "translate3d(0,0,0)" }
     ];
 
+    let activeSceneTimeline = null;
     const animateScene = (frame, direction = 1) => {
       if (!frame) return;
+      siteHeader?.classList.toggle("is-on-light", frame === flowStage);
       const sceneKey = [...sceneSelectors.keys()].find((key) => frame.classList.contains(key));
       const selector = sceneSelectors.get(sceneKey);
       if (!selector) return;
       const items = [...frame.querySelectorAll(selector)];
+      if (gsapEngine) {
+        activeSceneTimeline?.kill();
+        gsapEngine.killTweensOf([...items, ...frame.querySelectorAll(".flow-word,.stack-pill")]);
+        items.forEach((item) => item.classList.add("is-visible"));
+        if (reduceMotion) {
+          gsapEngine.set(items, { clearProps: "all" });
+          return;
+        }
+
+        const timeline = gsapEngine.timeline({
+          defaults: { ease: "power4.out" },
+          onComplete: () => {
+            items.forEach((item) => item.style.removeProperty("will-change"));
+          }
+        });
+        activeSceneTimeline = timeline;
+        const noDepth = window.matchMedia("(max-width: 720px)").matches;
+        items.forEach((item) => { item.style.willChange = "transform, opacity, filter"; });
+        timeline.fromTo(items,
+          {
+            opacity: 0,
+            y: (index) => direction * Math.min(44, 22 + index * 5),
+            scale: .985,
+            rotateX: noDepth ? 0 : direction * -7,
+            transformPerspective: 900,
+            filter: "blur(8px)"
+          },
+          {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            rotateX: 0,
+            filter: "blur(0px)",
+            duration: .76,
+            stagger: .055,
+            clearProps: "transform,filter"
+          }, 0
+        );
+
+        const words = [...frame.querySelectorAll(".flow-word")].slice(0, 42);
+        if (words.length) {
+          timeline.fromTo(words,
+            { opacity: 0, yPercent: direction * 115, rotateX: direction * -42, skewY: direction * 3, filter: "blur(7px)" },
+            { opacity: 1, yPercent: 0, rotateX: 0, skewY: 0, filter: "blur(0px)", duration: .64, stagger: .022, clearProps: "transform,filter" },
+            .08
+          );
+        }
+
+        if (frame === flowStage) {
+          const pills = [...frame.querySelectorAll(".stack-pill")];
+          timeline.fromTo(pills,
+            {
+              opacity: 0,
+              x: (index) => (index % 2 ? 1 : -1) * Math.min(180, 68 + (index % 7) * 17),
+              y: (index) => ((index % 3) - 1) * 34,
+              scale: .72,
+              rotate: (index) => ((index % 5) - 2) * 4
+            },
+            { opacity: 1, x: 0, y: 0, scale: 1, rotate: 0, duration: .82, stagger: { each: .012, from: "center" }, ease: "expo.out", clearProps: "transform,opacity" },
+            .12
+          );
+        }
+        return;
+      }
       frame.querySelectorAll(".is-springing").forEach((item) => {
         item._sceneAnimation?.cancel();
         item._sceneAnimation = null;
@@ -428,12 +563,12 @@
           ...(item.matches(".flow-word") ? [item] : []),
           ...item.querySelectorAll(".flow-word")
         ];
-        flowWords.forEach((word, wordIndex) => {
+        flowWords.slice(0, 18).forEach((word, wordIndex) => {
           word.getAnimations().forEach((wordAnimation) => wordAnimation.cancel());
           word.style.willChange = "transform, opacity, filter";
-          const wordAnimation = word.animate(createTextFlowFrames(direction),{
-            duration: 620,
-            delay: index * 20 + Math.min(wordIndex,14) * 28,
+          const wordAnimation = word.animate(createTextFlowFrames(direction, wordIndex),{
+            duration: 660,
+            delay: 76 + index * 26 + Math.min(wordIndex,17) * 32,
             easing: "cubic-bezier(.16,1,.3,1)",
             fill: "both"
           });
@@ -446,7 +581,7 @@
         const driftingText = [
           ...(item.matches(".text-drift") ? [item] : []),
           ...item.querySelectorAll(".text-drift")
-        ];
+        ].filter((text) => !text.querySelector(".flow-word"));
         driftingText.forEach((text, textIndex) => {
           text.getAnimations().forEach((textAnimation) => textAnimation.cancel());
           text.style.willChange = "transform, opacity, filter";
@@ -463,6 +598,37 @@
         });
       });
     };
+
+    // Native trackpad scrolling can bypass the wheel transition. Keep scene
+    // activation tied to the frame actually occupying the viewport so every
+    // frame entry receives the same text motion, regardless of input method.
+    let activeFrameIndex = -1;
+    const activateFrameScene = (index, direction = 1, force = false) => {
+      const frame = frames[index];
+      if (!frame || (!force && index === activeFrameIndex)) return;
+      const previousIndex = activeFrameIndex;
+      activeFrameIndex = index;
+      frames.forEach((candidate, candidateIndex) => candidate.classList.toggle("is-scene-active", candidateIndex === index));
+      const resolvedDirection = direction || (previousIndex < 0 ? 1 : Math.sign(index - previousIndex) || 1);
+      animateScene(frame, resolvedDirection);
+      if (frame === flowStage) requestAnimationFrame(boostTechnology);
+    };
+
+    const syncSceneFromViewport = (force = false) => {
+      const nextIndex = nearestFrameIndex();
+      const direction = activeFrameIndex < 0 ? 1 : Math.sign(nextIndex - activeFrameIndex) || 1;
+      activateFrameScene(nextIndex, direction, force);
+    };
+
+    let sceneSyncRaf = 0;
+    const queueSceneSync = () => {
+      if (sceneSyncRaf || frameWheelLocked) return;
+      sceneSyncRaf = requestAnimationFrame(() => {
+        sceneSyncRaf = 0;
+        if (!frameWheelLocked) syncSceneFromViewport();
+      });
+    };
+    window.addEventListener("scroll", queueSceneSync, { passive: true });
 
     const alignFrame = (index) => {
       const frame = frames[index];
@@ -498,8 +664,7 @@
 
       if (reduceMotion || !frameFlash) {
         alignFrame(targetIndex);
-        animateScene(target, direction);
-        if (target === flowStage) requestAnimationFrame(boostTechnology);
+        activateFrameScene(targetIndex, direction, true);
         if (!wheelInputReady) releaseWheelInput();
         return;
       }
@@ -571,8 +736,7 @@
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
-        animateScene(target, direction);
-        if (target === flowStage) requestAnimationFrame(boostTechnology);
+        activateFrameScene(targetIndex, direction, true);
         if (!wheelInputReady) releaseWheelInput();
       };
       requestAnimationFrame(renderTransition);
@@ -627,9 +791,17 @@
     });
 
     window.addEventListener("scrollend", () => {
-      if (!frameWheelLocked) alignFrame(nearestFrameIndex());
+      if (!frameWheelLocked) {
+        alignFrame(nearestFrameIndex());
+        queueSceneSync();
+      }
     }, { passive: true });
 
     window.addEventListener("resize", () => {
-      if (!frameWheelLocked) alignFrame(nearestFrameIndex());
+      if (!frameWheelLocked) {
+        alignFrame(nearestFrameIndex());
+        queueSceneSync();
+      }
     }, { passive: true });
+
+    if (reduceMotion) requestAnimationFrame(() => syncSceneFromViewport(true));
