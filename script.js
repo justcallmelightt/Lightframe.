@@ -152,14 +152,16 @@
 
     const finishIntro = () => {
       body.classList.add("ready");
-      intro?.remove();
-      requestAnimationFrame(() => syncSceneFromViewport(true));
+      requestAnimationFrame(() => {
+        syncSceneFromViewport(true);
+        document.documentElement.classList.remove("motion-booting");
+        intro?.remove();
+      });
     };
 
     const playIntro = () => {
       if (!intro || reduceMotion) {
-        body.classList.add("ready");
-        intro?.remove();
+        finishIntro();
         return;
       }
       let hasVisited = false;
@@ -719,6 +721,7 @@
           position = 0;
           velocity = 0;
           transitionLastTime = time;
+          activateFrameScene(targetIndex, direction, true);
           requestAnimationFrame(renderTransition);
           return;
         }
@@ -736,7 +739,6 @@
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
-        activateFrameScene(targetIndex, direction, true);
         if (!wheelInputReady) releaseWheelInput();
       };
       requestAnimationFrame(renderTransition);
