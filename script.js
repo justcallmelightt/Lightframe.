@@ -130,26 +130,6 @@
       flowStage.addEventListener("pointerenter", cancelTechnologyBoost, { passive: true });
     }
 
-    if (!reduceMotion && window.matchMedia("(pointer: fine)").matches) {
-      document.querySelectorAll(".stack-pill").forEach((pill) => {
-        pill.addEventListener("pointermove", (event) => {
-          const rect = pill.getBoundingClientRect();
-          const x = (event.clientX - rect.left) / rect.width - .5;
-          const y = (event.clientY - rect.top) / rect.height - .5;
-          pill.style.setProperty("--pill-x", `${(x * 5).toFixed(2)}px`);
-          pill.style.setProperty("--pill-y", `${(-7 + y * 3).toFixed(2)}px`);
-          pill.style.setProperty("--pill-rx", `${(-y * 4).toFixed(2)}deg`);
-          pill.style.setProperty("--pill-ry", `${(x * 5).toFixed(2)}deg`);
-        }, { passive: true });
-        pill.addEventListener("pointerleave", () => {
-          pill.style.setProperty("--pill-x", "0px");
-          pill.style.setProperty("--pill-y", "0px");
-          pill.style.setProperty("--pill-rx", "0deg");
-          pill.style.setProperty("--pill-ry", "0deg");
-        }, { passive: true });
-      });
-    }
-
     const finishIntro = () => {
       body.classList.add("ready");
       requestAnimationFrame(() => {
@@ -479,6 +459,59 @@
         activeSceneTimeline = timeline;
         const noDepth = window.matchMedia("(max-width: 720px)").matches;
         items.forEach((item) => { item.style.willChange = "transform, opacity, filter"; });
+
+        const isEditorialScene = sceneKey === "about" || sceneKey === "now";
+        if (isEditorialScene) {
+          const textGroups = items
+            .map((item) => [...item.querySelectorAll(".flow-word")])
+            .filter((group) => group.length);
+          const animatedWords = textGroups.flat();
+          const surfaces = items.filter((item) => item.matches(".principle,.interest"));
+
+          animatedWords.forEach((word) => {
+            word.style.willChange = "transform, opacity, filter";
+          });
+          gsapEngine.set(items, { opacity: 1, clearProps: "transform,filter" });
+          gsapEngine.set(animatedWords, {
+            opacity: 0,
+            yPercent: direction * 78,
+            rotateX: noDepth ? 0 : direction * -28,
+            skewY: direction * 1.5,
+            transformPerspective: 800,
+            filter: "blur(5px)"
+          });
+
+          if (surfaces.length) {
+            timeline.fromTo(surfaces,
+              { opacity: 0, y: direction * 24, scale: .992 },
+              { opacity: 1, y: 0, scale: 1, duration: .46, stagger: .075, clearProps: "transform" },
+              .03
+            );
+          }
+
+          textGroups.forEach((words, groupIndex) => {
+            timeline.to(words,
+              {
+                opacity: 1,
+                yPercent: 0,
+                rotateX: 0,
+                skewY: 0,
+                filter: "blur(0px)",
+                duration: .54,
+                stagger: Math.min(.026, .28 / Math.max(1, words.length)),
+                clearProps: "transform,filter"
+              },
+              .055 + groupIndex * .082
+            );
+          });
+
+          timeline.eventCallback("onComplete", () => {
+            items.forEach((item) => item.style.removeProperty("will-change"));
+            animatedWords.forEach((word) => word.style.removeProperty("will-change"));
+          });
+          return;
+        }
+
         timeline.fromTo(items,
           {
             opacity: 0,
@@ -494,8 +527,8 @@
             scale: 1,
             rotateX: 0,
             filter: "blur(0px)",
-            duration: .76,
-            stagger: .055,
+            duration: frame === flowStage ? .48 : .76,
+            stagger: frame === flowStage ? .03 : .055,
             clearProps: "transform,filter"
           }, 0
         );
@@ -514,13 +547,13 @@
           timeline.fromTo(pills,
             {
               opacity: 0,
-              x: (index) => (index % 2 ? 1 : -1) * Math.min(180, 68 + (index % 7) * 17),
-              y: (index) => ((index % 3) - 1) * 34,
-              scale: .72,
-              rotate: (index) => ((index % 5) - 2) * 4
+              x: (index) => (index % 2 ? 1 : -1) * Math.min(110, 42 + (index % 7) * 10),
+              y: (index) => ((index % 3) - 1) * 20,
+              scale: .86,
+              rotate: (index) => ((index % 5) - 2) * 2
             },
-            { opacity: 1, x: 0, y: 0, scale: 1, rotate: 0, duration: .82, stagger: { each: .012, from: "center" }, ease: "expo.out", clearProps: "transform,opacity" },
-            .12
+            { opacity: 1, x: 0, y: 0, scale: 1, rotate: 0, duration: .44, stagger: { each: .006, from: "center" }, ease: "expo.out", clearProps: "transform,opacity" },
+            .04
           );
         }
         return;
@@ -565,12 +598,12 @@
           ...(item.matches(".flow-word") ? [item] : []),
           ...item.querySelectorAll(".flow-word")
         ];
-        flowWords.slice(0, 18).forEach((word, wordIndex) => {
+        flowWords.forEach((word, wordIndex) => {
           word.getAnimations().forEach((wordAnimation) => wordAnimation.cancel());
           word.style.willChange = "transform, opacity, filter";
           const wordAnimation = word.animate(createTextFlowFrames(direction, wordIndex),{
-            duration: 660,
-            delay: 76 + index * 26 + Math.min(wordIndex,17) * 32,
+            duration: 600,
+            delay: 62 + index * 34 + Math.min(wordIndex,28) * 20,
             easing: "cubic-bezier(.16,1,.3,1)",
             fill: "both"
           });
