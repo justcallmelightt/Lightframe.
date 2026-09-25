@@ -12,6 +12,29 @@
     const gsapEngine = window.gsap;
     let motionSuspended = false;
 
+    if (hero && !reduceMotion) {
+      hero.insertAdjacentHTML("afterbegin", `
+        <div class="hero-beat-stage" aria-hidden="true">
+          <div class="hero-beat-wash"></div>
+          <div class="hero-beat-status">
+            <span class="hero-beat-status-name">LIGHTFRAME / ASSEMBLING</span>
+            <span class="hero-beat-ticks"><i></i><i></i><i></i><i></i><i></i></span>
+          </div>
+          <i class="hero-beat-line"></i>
+          <i class="hero-beat-line"></i>
+          <span class="hero-beat-index"><span>FRAME</span> <span>01</span> / <span>05</span></span>
+        </div>
+        <div class="hero-ambient" aria-hidden="true">
+          <i class="hero-orb hero-orb-a"></i>
+          <i class="hero-orb hero-orb-b"></i>
+          <i class="hero-scan"></i>
+          <div class="hero-kinetic-rail"><span>DESIGN · CODE · MOTION · DESIGN · CODE · MOTION ·&nbsp;</span><span>DESIGN · CODE · MOTION · DESIGN · CODE · MOTION ·&nbsp;</span></div>
+          <span class="hero-signal"><i></i><span>LIVE FRAME</span><b>01</b></span>
+        </div>
+      `);
+      body.classList.add("kinetic-hero");
+    }
+
     document.querySelectorAll("[data-split]").forEach((element) => {
       const characters = Array.from(element.textContent);
       element.textContent = "";
@@ -434,6 +457,7 @@
     ];
 
     let activeSceneTimeline = null;
+    let heroIdleTimeline = null;
     const animateScene = (frame, direction = 1) => {
       if (!frame) return;
       siteHeader?.classList.toggle("is-on-light", frame === flowStage);
@@ -442,6 +466,8 @@
       if (!selector) return;
       const items = [...frame.querySelectorAll(selector)];
       if (gsapEngine) {
+        heroIdleTimeline?.kill();
+        heroIdleTimeline = null;
         activeSceneTimeline?.kill();
         gsapEngine.killTweensOf([...items, ...frame.querySelectorAll(".flow-word,.stack-pill")]);
         items.forEach((item) => item.classList.add("is-visible"));
@@ -459,6 +485,75 @@
         activeSceneTimeline = timeline;
         const noDepth = window.matchMedia("(max-width: 720px)").matches;
         items.forEach((item) => { item.style.willChange = "transform, opacity, filter"; });
+
+        if (sceneKey === "hero") {
+          const titleLines = [...frame.querySelectorAll(".hero-title .line")];
+          const titleCharacters = titleLines.map((line) => [...line.querySelectorAll(".char")]);
+          const beatStage = frame.querySelector(".hero-beat-stage");
+          const beatWash = frame.querySelector(".hero-beat-wash");
+          const beatStatus = frame.querySelector(".hero-beat-status");
+          const beatTicks = [...frame.querySelectorAll(".hero-beat-ticks i")];
+          const beatLines = [...frame.querySelectorAll(".hero-beat-line")];
+          const beatIndexParts = [...frame.querySelectorAll(".hero-beat-index span")];
+          const descriptionWords = [...frame.querySelectorAll(".hero-description .flow-word")];
+
+          gsapEngine.set(items, { opacity: 1, clearProps: "filter" });
+          gsapEngine.set(siteHeader, { opacity: 0, y: -28, scaleX: .94, transformOrigin: "50% 0%" });
+          gsapEngine.set(frame.querySelector(".hero-meta"), { opacity: 0, y: -18 });
+          gsapEngine.set(frame.querySelector(".code-label"), { opacity: 0, x: -34 });
+          gsapEngine.set(titleLines[0], { opacity: 0, xPercent: -9, yPercent: -34 });
+          gsapEngine.set(titleLines[1], { opacity: 0, xPercent: 9, yPercent: 34 });
+          gsapEngine.set(titleCharacters.flat(), { opacity: 0, yPercent: 112, rotateX: noDepth ? 0 : -36, filter: "blur(7px)", transformPerspective: 900 });
+          gsapEngine.set(frame.querySelector(".hero-bottom"), { opacity: 0, y: 26 });
+          gsapEngine.set(descriptionWords, { opacity: 0, yPercent: 75 });
+          gsapEngine.set(beatIndexParts, { opacity: 0, yPercent: 120 });
+          gsapEngine.set(beatStatus, { opacity: 0, y: 12 });
+          gsapEngine.set(beatTicks, { opacity: 0, scaleX: 0, transformOrigin: "left center" });
+
+          timeline
+            .set(beatWash, { yPercent: 0 })
+            .set(beatStage, { opacity: 1 })
+            .to(beatStatus, { opacity: 1, y: 0, duration: .15, ease: "power3.out" }, 0)
+            .to(beatTicks, { opacity: 1, scaleX: 1, duration: .11, stagger: .022, ease: "power2.out" }, .03)
+            .to(beatStatus, { opacity: 0, y: -10, duration: .12, ease: "power3.in" }, .2)
+            .to(beatWash, { yPercent: -102, duration: .32, ease: "expo.inOut" }, .19)
+            .to(siteHeader, { opacity: 1, y: 0, scaleX: 1, duration: .34, ease: "expo.out", clearProps: "transform,opacity" }, .3)
+            .to(frame.querySelector(".hero-meta"), { opacity: 1, y: 0, duration: .28, ease: "power4.out", clearProps: "transform,opacity" }, .37)
+            .to(frame.querySelector(".code-label"), { opacity: 1, x: 0, duration: .3, ease: "expo.out", clearProps: "transform,opacity" }, .42)
+            .to(beatLines, { scaleX: 1, duration: .34, stagger: .055, ease: "expo.inOut" }, .42)
+            .to(titleLines, { opacity: 1, xPercent: 0, yPercent: 0, duration: .42, stagger: .075, ease: "expo.out", clearProps: "transform,opacity" }, .47)
+            .to(titleCharacters[0], { opacity: 1, yPercent: 0, rotateX: 0, filter: "blur(0px)", duration: .38, stagger: .018, ease: "power4.out", clearProps: "transform,filter,opacity" }, .5)
+            .to(titleCharacters[1], { opacity: 1, yPercent: 0, rotateX: 0, filter: "blur(0px)", duration: .38, stagger: .016, ease: "power4.out", clearProps: "transform,filter,opacity" }, .6)
+            .to(beatIndexParts, { opacity: 1, yPercent: 0, duration: .24, stagger: .045, ease: "power4.out" }, .7)
+            .to(frame.querySelector(".hero-bottom"), { opacity: 1, y: 0, duration: .34, ease: "expo.out", clearProps: "transform,opacity" }, .8)
+            .to(descriptionWords, { opacity: 1, yPercent: 0, duration: .28, stagger: .014, ease: "power4.out", clearProps: "transform,opacity" }, .84)
+            .to(beatLines, { opacity: .2, scaleX: .18, duration: .28, stagger: .035, ease: "power3.inOut" }, 1)
+            .to(beatIndexParts, { opacity: .42, duration: .2 }, 1.04);
+
+          timeline.eventCallback("onComplete", () => {
+            items.forEach((item) => item.style.removeProperty("will-change"));
+            titleCharacters.flat().forEach((character) => {
+              character.style.removeProperty("will-change");
+              character.style.removeProperty("filter");
+            });
+            frame.classList.add("is-assembled");
+            heroIdleTimeline = gsapEngine.timeline({ repeat: -1, repeatDelay: .45, delay: .28 })
+              .to(titleLines[0], { x: -14, duration: .42, ease: "power3.inOut" }, 0)
+              .to(titleLines[1], { x: 14, duration: .42, ease: "power3.inOut" }, 0)
+              .to(titleCharacters.flat(), {
+                y: (index) => index % 3 === 0 ? -7 : index % 3 === 1 ? 4 : -2,
+                opacity: (index) => index % 4 === 0 ? .62 : 1,
+                duration: .24,
+                stagger: { each: .014, from: "start" },
+                ease: "power2.out"
+              }, .48)
+              .to(titleCharacters.flat(), { y: 0, opacity: 1, duration: .34, stagger: { each: .01, from: "end" }, ease: "power3.out" }, .76)
+              .to(titleLines, { x: 0, duration: .52, ease: "expo.out" }, .92)
+              .to(frame.querySelector(".hero-meta"), { x: 9, duration: .24, ease: "power2.out" }, 1.08)
+              .to(frame.querySelector(".hero-meta"), { x: 0, duration: .34, ease: "expo.out" }, 1.32);
+          });
+          return;
+        }
 
         const isEditorialScene = sceneKey === "about" || sceneKey === "now";
         if (isEditorialScene) {
