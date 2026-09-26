@@ -5,6 +5,7 @@
     const hero = document.querySelector(".hero");
     const interestCards = [...document.querySelectorAll(".interest")];
     const flowStage = document.querySelector("[data-flow-stage]");
+    const flowLanes = flowStage ? [...flowStage.querySelectorAll(".flow-lane")] : [];
     const siteHeader = document.querySelector(".site-header");
     const frameFlash = document.querySelector(".frame-flash");
     const frameFlashName = document.querySelector(".frame-flash-name");
@@ -397,9 +398,20 @@
     }
 
     const frames = [...document.querySelectorAll(".frame")];
+    const flowStageIndex = frames.indexOf(flowStage);
     let frameWheelLocked = false;
     let frameTransitionToken = 0;
+    const stackScrollBounds = () => {
+      if (!flowStage) return null;
+      const start = flowStage.offsetTop;
+      return { start, end: start + flowStage.offsetHeight - window.innerHeight };
+    };
+    const isInsideStackScroll = (slack = 2) => {
+      const bounds = stackScrollBounds();
+      return bounds && window.scrollY >= bounds.start - slack && window.scrollY <= bounds.end + slack;
+    };
     const nearestFrameIndex = () => {
+      if (!reduceMotion && isInsideStackScroll()) return flowStageIndex;
       let nearestIndex = 0;
       let nearestDistance = Infinity;
       frames.forEach((frame, index) => {
@@ -410,6 +422,31 @@
       });
       return nearestIndex;
     };
+
+    let stackProgressRaf = 0;
+    const renderStackProgress = () => {
+      stackProgressRaf = 0;
+      const bounds = stackScrollBounds();
+      if (!bounds || reduceMotion) return;
+      const distance = Math.max(1, bounds.end - bounds.start);
+      const value = Math.min(1, Math.max(0, (window.scrollY - bounds.start) / distance));
+      const visualProgress = .16 + value * .84;
+      flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
+      flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
+      flowLanes.forEach((lane, index) => {
+        const laneProgress = Math.min(1, Math.max(0, (value + .18 - index * .11) / .62));
+        lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
+      });
+      flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
+      document.documentElement.classList.toggle("is-stack-scrubbing", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
+    };
+    const queueStackProgress = () => {
+      if (stackProgressRaf) return;
+      stackProgressRaf = requestAnimationFrame(renderStackProgress);
+    };
+    window.addEventListener("scroll", queueStackProgress, { passive: true });
+    window.addEventListener("resize", queueStackProgress, { passive: true });
+    requestAnimationFrame(renderStackProgress);
 
     const sceneSelectors = new Map([
       ["hero", ".hero-meta,.code-label,.hero-title .line,.scroll-cue,.hero-description"],
@@ -887,9 +924,36 @@
 
     window.addEventListener("wheel", (event) => {
       if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-      event.preventDefault();
       const now = performance.now();
+      const isNewWheelGesture = now - lastWheelAt > 360;
       lastWheelAt = now;
+      const stackBounds = stackScrollBounds();
+      if (!reduceMotion && stackBounds && isInsideStackScroll(3) && !frameWheelLocked) {
+        const movingForward = event.deltaY > 0;
+        const movingBackward = event.deltaY < 0;
+        const canMoveInside = (movingForward && window.scrollY < stackBounds.end - 2) ||
+          (movingBackward && window.scrollY > stackBounds.start + 2);
+        if (canMoveInside) {
+          const deltaScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
+          const projectedY = window.scrollY + event.deltaY * deltaScale;
+          if (projectedY > stackBounds.end || projectedY < stackBounds.start) {
+            event.preventDefault();
+            window.scrollTo({
+              top: Math.min(stackBounds.end, Math.max(stackBounds.start, projectedY)),
+              behavior: "auto"
+            });
+          }
+          wheelAccumulator = 0;
+          wheelInputReady = true;
+          return;
+        }
+        if (!isNewWheelGesture) {
+          event.preventDefault();
+          wheelAccumulator = 0;
+          return;
+        }
+      }
+      event.preventDefault();
       if (frameWheelLocked || !wheelInputReady || !frames.length) {
         wheelAccumulator = 0;
         return;
@@ -912,6 +976,15 @@
       const down = event.key === "ArrowDown" || event.key === "PageDown" || (event.key === " " && !event.shiftKey);
       const up = event.key === "ArrowUp" || event.key === "PageUp" || (event.key === " " && event.shiftKey);
       if (!down && !up) return;
+      const stackBounds = stackScrollBounds();
+      if (!reduceMotion && stackBounds && isInsideStackScroll(3)) {
+        const canMoveInside = (down && window.scrollY < stackBounds.end - 2) || (up && window.scrollY > stackBounds.start + 2);
+        if (canMoveInside) {
+          event.preventDefault();
+          window.scrollBy({ top: (down ? 1 : -1) * window.innerHeight * .22, behavior: "smooth" });
+          return;
+        }
+      }
       event.preventDefault();
       if (frameWheelLocked) return;
       const currentIndex = nearestFrameIndex();
@@ -922,6 +995,7 @@
 
     window.addEventListener("scrollend", () => {
       if (!frameWheelLocked) {
+        if (!reduceMotion && isInsideStackScroll() && document.documentElement.classList.contains("is-stack-scrubbing")) return;
         alignFrame(nearestFrameIndex());
         queueSceneSync();
       }
