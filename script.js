@@ -431,10 +431,12 @@
       const distance = Math.max(1, bounds.end - bounds.start);
       const value = Math.min(1, Math.max(0, (window.scrollY - bounds.start) / distance));
       const visualProgress = .16 + value * .84;
+      const pinnedOffset = Math.min(distance, Math.max(0, window.scrollY - bounds.start));
+      flowStage.style.setProperty("--stack-pin", `${pinnedOffset.toFixed(2)}px`);
       flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
       flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
       flowLanes.forEach((lane, index) => {
-        const laneProgress = Math.min(1, Math.max(0, (value + .18 - index * .11) / .62));
+        const laneProgress = Math.min(1, Math.max(0, (value + .06 - index * .09) / .64));
         lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
       });
       flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
