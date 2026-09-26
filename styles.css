@@ -302,8 +302,8 @@
     .interest h3 { margin-bottom: 10px; font-size: clamp(1.55rem,2.35vw,2.5rem); font-weight: 600; letter-spacing: -.035em; line-height: 1.16; }
     .interest p { max-width: 600px; color: currentColor; opacity: .78; font-size: .88rem; letter-spacing: -.004em; line-height: 1.68; }
 
-    .stack-section { --flow-x: 0; --flow-y: 0; --stack-progress: .16; --stack-scroll: 0; --stack-pin: 0px; position: relative; display: block; width: 100%; height: 220svh; min-height: 220svh; padding: 0; background: linear-gradient(135deg,#ffffff 0%,#f7f5ff 43%,#fff3fa 72%,#fffbe9 100%); color: #111114; overflow: visible; }
-    .stack-sticky { position: relative; top: 0; display: flex; height: 100svh; min-height: 100svh; padding: clamp(92px,13vh,122px) 0 24px; flex-direction: column; justify-content: center; overflow: hidden; transform: translate3d(0,var(--stack-pin),0); will-change: transform; }
+    .stack-section { --flow-x: 0; --flow-y: 0; --stack-progress: .16; --stack-scroll: 0; --stack-handoff: 0; position: relative; display: block; width: 100%; height: 100svh; min-height: 100svh; padding: 0; background: linear-gradient(135deg,#ffffff 0%,#f7f5ff 43%,#fff3fa 72%,#fffbe9 100%); color: #111114; overflow: visible; }
+    .stack-sticky { position: relative; top: 0; display: flex; height: 100svh; min-height: 100svh; padding: clamp(92px,13vh,122px) 0 24px; flex-direction: column; justify-content: center; overflow: hidden; }
     .stack-section::before { position: absolute; inset: -8%; z-index: 0; display: block; opacity: 0; background: radial-gradient(circle at 50% 50%,rgba(255,255,255,.42) 0 8%,transparent 34%),conic-gradient(from 218deg at 50% 52%,#008b78,#064fe4,#7628ee,#e51cd8,#ff4f9a,#ffd95f,#c9c7f4,#008b78); transform: scale(.55) rotate(-12deg); pointer-events: none; content: ""; will-change: transform,opacity; }
     .stack-section::after { position: absolute; inset: -28%; z-index: 1; background: radial-gradient(circle at 14% 36%,rgba(0,120,255,.26),transparent 22%),radial-gradient(circle at 72% 22%,rgba(231,0,255,.22),transparent 21%),radial-gradient(circle at 88% 78%,rgba(255,47,101,.22),transparent 24%),radial-gradient(circle at 33% 88%,rgba(0,230,164,.2),transparent 23%); transform: translate3d(-2%,-1%,0) scale(1.04); animation: stack-neon-drift 8s ease-in-out infinite alternate; pointer-events: none; content: ""; will-change: transform,opacity; }
     .stack-section.is-scene-active::before { animation: stack-color-burst 1.35s var(--out) both; }
@@ -343,7 +343,16 @@
     .flow-note { width: var(--page); margin: 12px auto 0; color: rgba(29,29,31,.46); font-size: .72rem; letter-spacing: .04em; text-align: right; }
     .stack-scroll-meter { position: absolute; right: max(22px,calc((100vw - var(--page))/2)); bottom: 22px; z-index: 4; display: flex; align-items: center; gap: 10px; color: rgba(17,17,20,.42); font-size: .56rem; font-weight: 680; letter-spacing: .12em; }
     .stack-scroll-meter i { display: block; width: 72px; height: 2px; background: linear-gradient(90deg,#111 calc(var(--stack-scroll) * 100%),rgba(17,17,20,.14) 0); border-radius: 99px; }
+    .stack-handoff { position: absolute; inset: 0; z-index: 8; display: grid; padding: clamp(108px,15vh,148px) var(--gutter) clamp(32px,7vh,68px); align-content: center; color: #fff; background: radial-gradient(circle at 78% 20%,rgba(128,62,255,.52),transparent 38%),radial-gradient(circle at 18% 82%,rgba(0,106,255,.24),transparent 40%),linear-gradient(135deg,#050509 0%,#111025 46%,#35105a 100%); transform: translate3d(0,calc((1 - var(--stack-handoff)) * 11vh),0) scale(calc(.965 + var(--stack-handoff) * .035)); clip-path: inset(calc((1 - var(--stack-handoff)) * 50%) calc((1 - var(--stack-handoff)) * 7%) round calc((1 - var(--stack-handoff)) * 42px)); pointer-events: none; will-change: transform,clip-path; }
+    .stack-handoff::after { position: absolute; inset: 0; opacity: calc(.24 + var(--stack-handoff) * .3); background: linear-gradient(105deg,transparent 16%,rgba(0,116,255,.38) 38%,rgba(255,20,207,.42) 61%,rgba(255,216,74,.28) 84%); mix-blend-mode: screen; content: ""; }
+    .stack-handoff-index,.stack-handoff strong,.stack-handoff-cue { position: relative; z-index: 1; width: min(1360px,calc(100vw - var(--gutter) * 2)); margin-inline: auto; opacity: var(--stack-handoff); transform: translate3d(0,calc((1 - var(--stack-handoff)) * 26px),0); }
+    .stack-handoff-index { margin-bottom: clamp(20px,4vh,42px); color: rgba(255,255,255,.62); font-size: .68rem; font-weight: 680; letter-spacing: .16em; }
+    .stack-handoff strong { max-width: 1180px; font-size: clamp(3.2rem,6.7vw,7.8rem); font-weight: 650; letter-spacing: -.055em; line-height: .98; }
+    .stack-handoff-cue { margin-top: clamp(28px,6vh,58px); color: rgba(255,255,255,.62); font-size: .72rem; letter-spacing: .08em; }
     .stack-section.is-scrub-active .stack-heading { opacity: calc(.82 + var(--stack-progress) * .18); transform: translate3d(calc((1 - var(--stack-progress)) * -10px),calc((1 - var(--stack-progress)) * 12px),0); }
+    .stack-section.is-scrub-active .stack-heading,.stack-section.is-scrub-active .flow-field,.stack-section.is-scrub-active .flow-note,.stack-section.is-scrub-active .stack-scroll-meter { visibility: visible; }
+    .stack-section.is-scrub-active .stack-heading { opacity: calc((.82 + var(--stack-progress) * .18) * (1 - var(--stack-handoff))); }
+    .stack-section.is-scrub-active .flow-field,.stack-section.is-scrub-active .flow-note,.stack-section.is-scrub-active .stack-scroll-meter { opacity: calc(1 - var(--stack-handoff)); }
     .stack-section.is-scrub-active .flow-lane { opacity: calc(.16 + var(--lane-progress,0) * .84); transform: perspective(900px) translate3d(calc((1 - var(--lane-progress,0)) * var(--lane-x,18vw)),calc((1 - var(--lane-progress,0)) * var(--lane-y,18px)),calc((1 - var(--lane-progress,0)) * -150px)) scale(calc(.76 + var(--lane-progress,0) * .24)) rotateX(calc((1 - var(--lane-progress,0)) * var(--lane-tilt,5deg))); filter: blur(calc((1 - var(--lane-progress,0)) * 1.8px)); clip-path: inset(0 calc((1 - var(--lane-progress,0)) * 16%) 0 calc((1 - var(--lane-progress,0)) * 16%)); }
     .stack-section.is-scrub-active .flow-lane { animation: none; }
     .stack-section.is-scrub-active .flow-lane:nth-child(1) { --lane-x:-18vw; --lane-y:18px; --lane-tilt:6deg; }
@@ -539,6 +548,7 @@
       .flow-lane { overflow-x: auto; mask-image: none; }
       .interest.reveal.is-visible { transform: none; }
       .stack-section { height: 100svh; min-height: 100svh; }
+      .stack-handoff { display: none; }
       .stack-scroll-meter { display: none; }
       .stack-section.is-scrub-active .stack-heading,.stack-section.is-scrub-active .flow-lane { opacity: 1; transform: none; }
     }

@@ -1,3 +1,4 @@
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const body = document.body;
     const intro = document.querySelector(".intro-screen");
@@ -11,7 +12,29 @@
     const frameFlashName = document.querySelector(".frame-flash-name");
     const frameFlashIndex = document.querySelector(".frame-flash-index");
     const gsapEngine = window.gsap;
+    const scrollTriggerEngine = window.ScrollTrigger;
+    const LenisEngine = window.Lenis;
     let motionSuspended = false;
+
+    let smoothScroll = null;
+    if (!reduceMotion && LenisEngine && gsapEngine) {
+      smoothScroll = new LenisEngine({
+        lerp: .06,
+        smoothWheel: true,
+        wheelMultiplier: .45,
+        anchors: true
+      });
+      if (scrollTriggerEngine) smoothScroll.on("scroll", scrollTriggerEngine.update);
+      gsapEngine.ticker.add((time) => smoothScroll.raf(time * 1000));
+      gsapEngine.ticker.lagSmoothing(0);
+    }
+    const setScrollPosition = (top, immediate = true) => {
+      if (smoothScroll) {
+        smoothScroll.scrollTo(top, immediate ? { immediate: true, force: true } : { duration: .8, force: true });
+        return;
+      }
+      window.scrollTo({ top, behavior: immediate ? "auto" : "smooth" });
+    };
 
     if (hero && !reduceMotion) {
       hero.insertAdjacentHTML("afterbegin", `
@@ -401,8 +424,10 @@
     const flowStageIndex = frames.indexOf(flowStage);
     let frameWheelLocked = false;
     let frameTransitionToken = 0;
+    let stackScrollTrigger = null;
     const stackScrollBounds = () => {
       if (!flowStage) return null;
+      if (stackScrollTrigger) return { start: stackScrollTrigger.start, end: stackScrollTrigger.end };
       const start = flowStage.offsetTop;
       return { start, end: start + flowStage.offsetHeight - window.innerHeight };
     };
@@ -424,19 +449,20 @@
     };
 
     let stackProgressRaf = 0;
-    const renderStackProgress = () => {
+    const renderStackProgress = (forcedValue) => {
       stackProgressRaf = 0;
       const bounds = stackScrollBounds();
       if (!bounds || reduceMotion) return;
       const distance = Math.max(1, bounds.end - bounds.start);
-      const value = Math.min(1, Math.max(0, (window.scrollY - bounds.start) / distance));
+      const measuredValue = (window.scrollY - bounds.start) / distance;
+      const value = Math.min(1, Math.max(0, Number.isFinite(forcedValue) ? forcedValue : measuredValue));
       const visualProgress = .16 + value * .84;
-      const pinnedOffset = Math.min(distance, Math.max(0, window.scrollY - bounds.start));
-      flowStage.style.setProperty("--stack-pin", `${pinnedOffset.toFixed(2)}px`);
+      const handoffProgress = Math.min(1, Math.max(0, (value - .7) / .28));
       flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
       flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
+      flowStage.style.setProperty("--stack-handoff", handoffProgress.toFixed(4));
       flowLanes.forEach((lane, index) => {
-        const laneProgress = Math.min(1, Math.max(0, (value + .06 - index * .09) / .64));
+        const laneProgress = Math.min(1, Math.max(0, (value + .03 - index * .1) / .72));
         lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
       });
       flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
@@ -444,11 +470,35 @@
     };
     const queueStackProgress = () => {
       if (stackProgressRaf) return;
-      stackProgressRaf = requestAnimationFrame(renderStackProgress);
+      stackProgressRaf = requestAnimationFrame(() => renderStackProgress());
     };
     window.addEventListener("scroll", queueStackProgress, { passive: true });
     window.addEventListener("resize", queueStackProgress, { passive: true });
-    requestAnimationFrame(renderStackProgress);
+    if (gsapEngine && scrollTriggerEngine && flowStage && !reduceMotion) {
+      gsapEngine.registerPlugin(scrollTriggerEngine);
+      stackScrollTrigger = scrollTriggerEngine.create({
+        trigger: flowStage,
+        start: "top top",
+        end: () => `+=${Math.round(window.innerHeight * 4.8)}`,
+        pin: flowStage,
+        pinSpacing: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => renderStackProgress(self.progress),
+        onRefresh: (self) => renderStackProgress(self.progress)
+      });
+      window.addEventListener("load", () => scrollTriggerEngine.refresh(), { once: true });
+      document.fonts?.ready.then(() => scrollTriggerEngine.refresh());
+      requestAnimationFrame(() => {
+        scrollTriggerEngine.refresh();
+        const hashTarget = window.location.hash && document.querySelector(window.location.hash);
+        if (!hashTarget) return;
+        const targetTop = hashTarget === flowStage ? stackScrollTrigger.start : hashTarget.offsetTop;
+        setScrollPosition(targetTop);
+        if (hashTarget === flowStage) renderStackProgress(0);
+      });
+    }
+    requestAnimationFrame(() => renderStackProgress());
 
     const sceneSelectors = new Map([
       ["hero", ".hero-meta,.code-label,.hero-title .line,.scroll-cue,.hero-description"],
@@ -802,7 +852,8 @@
     const alignFrame = (index) => {
       const frame = frames[index];
       if (!frame) return;
-      window.scrollTo({ top: frame.offsetTop, behavior: "auto" });
+      const top = frame === flowStage && stackScrollTrigger ? stackScrollTrigger.start : frame.offsetTop;
+      setScrollPosition(top);
     };
 
     let wheelAccumulator = 0;
@@ -924,53 +975,14 @@
       });
     });
 
-    window.addEventListener("wheel", (event) => {
-      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-      const now = performance.now();
-      const isNewWheelGesture = now - lastWheelAt > 360;
-      lastWheelAt = now;
-      const stackBounds = stackScrollBounds();
-      if (!reduceMotion && stackBounds && isInsideStackScroll(3) && !frameWheelLocked) {
-        const movingForward = event.deltaY > 0;
-        const movingBackward = event.deltaY < 0;
-        const canMoveInside = (movingForward && window.scrollY < stackBounds.end - 2) ||
-          (movingBackward && window.scrollY > stackBounds.start + 2);
-        if (canMoveInside) {
-          const deltaScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? window.innerHeight : 1;
-          const projectedY = window.scrollY + event.deltaY * deltaScale;
-          if (projectedY > stackBounds.end || projectedY < stackBounds.start) {
-            event.preventDefault();
-            window.scrollTo({
-              top: Math.min(stackBounds.end, Math.max(stackBounds.start, projectedY)),
-              behavior: "auto"
-            });
-          }
-          wheelAccumulator = 0;
-          wheelInputReady = true;
-          return;
-        }
-        if (!isNewWheelGesture) {
-          event.preventDefault();
-          wheelAccumulator = 0;
-          return;
-        }
-      }
-      event.preventDefault();
-      if (frameWheelLocked || !wheelInputReady || !frames.length) {
-        wheelAccumulator = 0;
-        return;
-      }
-      wheelAccumulator += event.deltaY;
-      if (Math.abs(wheelAccumulator) < 12) return;
-      const wheelDirection = Math.sign(wheelAccumulator);
-      const wheelVelocity = wheelAccumulator;
+    // Keep wheel scrolling native. ScrollTrigger uses the browser scroll position as
+    // its single source of truth, so Chrome trackpad momentum remains reversible and
+    // cannot be misread as a request to skip directly to the next full-screen frame.
+    window.addEventListener("wheel", () => {
+      lastWheelAt = performance.now();
       wheelAccumulator = 0;
-      const currentIndex = nearestFrameIndex();
-      const nextIndex = Math.min(frames.length - 1, Math.max(0, currentIndex + wheelDirection));
-      if (nextIndex === currentIndex) return;
-      wheelInputReady = false;
-      goToFrame(nextIndex, wheelDirection, wheelVelocity);
-    }, { passive: false });
+      wheelInputReady = true;
+    }, { passive: true });
 
     window.addEventListener("keydown", (event) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -983,7 +995,7 @@
         const canMoveInside = (down && window.scrollY < stackBounds.end - 2) || (up && window.scrollY > stackBounds.start + 2);
         if (canMoveInside) {
           event.preventDefault();
-          window.scrollBy({ top: (down ? 1 : -1) * window.innerHeight * .22, behavior: "smooth" });
+          setScrollPosition(window.scrollY + (down ? 1 : -1) * window.innerHeight * .16, false);
           return;
         }
       }
@@ -996,16 +1008,12 @@
     });
 
     window.addEventListener("scrollend", () => {
-      if (!frameWheelLocked) {
-        if (!reduceMotion && isInsideStackScroll() && document.documentElement.classList.contains("is-stack-scrubbing")) return;
-        alignFrame(nearestFrameIndex());
-        queueSceneSync();
-      }
+      if (!frameWheelLocked) queueSceneSync();
     }, { passive: true });
 
     window.addEventListener("resize", () => {
       if (!frameWheelLocked) {
-        alignFrame(nearestFrameIndex());
+        if (stackScrollTrigger) stackScrollTrigger.refresh();
         queueSceneSync();
       }
     }, { passive: true });
