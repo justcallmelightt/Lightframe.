@@ -456,6 +456,11 @@
     };
 
     let stackProgressRaf = 0;
+    const easeOutBack = (value) => {
+      const overshoot = 1.70158;
+      const shifted = value - 1;
+      return 1 + (overshoot + 1) * shifted ** 3 + overshoot * shifted ** 2;
+    };
     const renderStackProgress = (forcedValue) => {
       stackProgressRaf = 0;
       const bounds = stackScrollBounds();
@@ -464,18 +469,25 @@
       const measuredValue = (window.scrollY - bounds.start) / distance;
       const value = Math.min(1, Math.max(0, Number.isFinite(forcedValue) ? forcedValue : measuredValue));
       const visualProgress = .16 + value * .84;
-      const handoffProgress = Math.min(1, Math.max(0, (value - .9) / .1));
+      const assembled = value >= .72;
+      const handoffProgress = Math.min(1, Math.max(0, (value - .92) / .08));
       flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
       flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
       flowStage.style.setProperty("--stack-handoff", handoffProgress.toFixed(4));
       flowLanes.forEach((lane, index) => {
-        const laneProgress = Math.min(1, Math.max(0, (value + .03 - index * .09) / .56));
+        const laneStart = .06 + index * .115;
+        const linearProgress = Math.min(1, Math.max(0, (value - laneStart) / .18));
+        const laneProgress = easeOutBack(linearProgress);
         const direction = index % 2 ? 1 : -1;
-        const travel = direction * value * (18 + index * 4);
+        const approach = direction * (1 - laneProgress) * (38 + index * 3);
+        const impact = Math.sin(Math.min(1, linearProgress) * Math.PI) * (1 - linearProgress) * 7;
         lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
-        lane.style.setProperty("--track-scroll-x", `${travel.toFixed(3)}vw`);
+        lane.style.setProperty("--track-scroll-x", `${approach.toFixed(3)}vw`);
+        lane.style.setProperty("--lane-impact", `${impact.toFixed(3)}px`);
       });
       flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
+      flowStage.classList.toggle("is-stack-assembled", assembled);
+      flowStage.classList.toggle("is-handoff-active", handoffProgress > 0);
       document.documentElement.classList.toggle("is-stack-scrubbing", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
     };
     const queueStackProgress = () => {
@@ -484,7 +496,13 @@
     };
     window.addEventListener("scroll", queueStackProgress, { passive: true });
     window.addEventListener("resize", queueStackProgress, { passive: true });
-    if (gsapEngine && scrollTriggerEngine && flowStage && !reduceMotion) {
+    const canUseStackScrollTrigger = gsapEngine && scrollTriggerEngine && flowStage && !reduceMotion;
+    if (flowStage && !reduceMotion && !canUseStackScrollTrigger) {
+      // Keep the complete stack story working when CDN motion libraries are
+      // unavailable (notably when this page is opened directly with file://).
+      flowStage.classList.add("is-native-stack-scroll");
+    }
+    if (canUseStackScrollTrigger) {
       gsapEngine.registerPlugin(scrollTriggerEngine);
       stackScrollTrigger = scrollTriggerEngine.create({
         trigger: flowStage,
@@ -506,6 +524,16 @@
         const targetTop = hashTarget === flowStage ? stackScrollTrigger.start : hashTarget.offsetTop;
         setScrollPosition(targetTop);
         if (hashTarget === flowStage) renderStackProgress(0);
+      });
+    } else if (flowStage && !reduceMotion) {
+      requestAnimationFrame(() => {
+        const hashTarget = window.location.hash && document.querySelector(window.location.hash);
+        if (hashTarget === flowStage) {
+          setScrollPosition(flowStage.offsetTop);
+          renderStackProgress(0);
+          return;
+        }
+        renderStackProgress();
       });
     }
     requestAnimationFrame(() => renderStackProgress());
