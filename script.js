@@ -27,6 +27,7 @@
       if (scrollTriggerEngine) smoothScroll.on("scroll", scrollTriggerEngine.update);
       gsapEngine.ticker.add((time) => smoothScroll.raf(time * 1000));
       gsapEngine.ticker.lagSmoothing(0);
+      if (intro) smoothScroll.stop();
     }
     const setScrollPosition = (top, immediate = true) => {
       if (smoothScroll) {
@@ -178,11 +179,17 @@
     }
 
     const finishIntro = () => {
+      if (!window.location.hash || window.location.hash === "#home") {
+        window.scrollTo(0, 0);
+        setScrollPosition(0);
+      }
       body.classList.add("ready");
       requestAnimationFrame(() => {
-        syncSceneFromViewport(true);
         document.documentElement.classList.remove("motion-booting");
         intro?.remove();
+        smoothScroll?.start();
+        scrollTriggerEngine?.refresh();
+        syncSceneFromViewport(true);
       });
     };
 
@@ -840,6 +847,40 @@
     };
 
     let sceneSyncRaf = 0;
+    let lastObservedScrollY = window.scrollY;
+    let stackTraversalGuard = false;
+    const guardStackTraversal = () => {
+      if (stackTraversalGuard || reduceMotion) {
+        lastObservedScrollY = window.scrollY;
+        return false;
+      }
+      const bounds = stackScrollBounds();
+      if (!bounds) {
+        lastObservedScrollY = window.scrollY;
+        return false;
+      }
+      const currentY = window.scrollY;
+      let guardedY = null;
+      if (lastObservedScrollY < bounds.start - 2 && currentY > bounds.end + 2) {
+        guardedY = bounds.start;
+      } else if (lastObservedScrollY > bounds.end + 2 && currentY < bounds.start - 2) {
+        guardedY = bounds.end;
+      } else if (lastObservedScrollY >= bounds.start - 2 && lastObservedScrollY < bounds.end - 2 && currentY > bounds.end + 2) {
+        guardedY = Math.min(bounds.end - 2, lastObservedScrollY + window.innerHeight * .34);
+      } else if (lastObservedScrollY <= bounds.end + 2 && lastObservedScrollY > bounds.start + 2 && currentY < bounds.start - 2) {
+        guardedY = Math.max(bounds.start + 2, lastObservedScrollY - window.innerHeight * .34);
+      }
+      if (guardedY === null) {
+        lastObservedScrollY = currentY;
+        return false;
+      }
+      stackTraversalGuard = true;
+      lastObservedScrollY = guardedY;
+      setScrollPosition(guardedY);
+      renderStackProgress();
+      requestAnimationFrame(() => { stackTraversalGuard = false; });
+      return true;
+    };
     const queueSceneSync = () => {
       if (sceneSyncRaf || frameWheelLocked) return;
       sceneSyncRaf = requestAnimationFrame(() => {
@@ -847,7 +888,9 @@
         if (!frameWheelLocked) syncSceneFromViewport();
       });
     };
-    window.addEventListener("scroll", queueSceneSync, { passive: true });
+    window.addEventListener("scroll", () => {
+      if (!guardStackTraversal()) queueSceneSync();
+    }, { passive: true });
 
     const alignFrame = (index) => {
       const frame = frames[index];

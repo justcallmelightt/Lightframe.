@@ -25,10 +25,11 @@
     html {
       background: #050505;
       scroll-behavior: auto;
-      scroll-snap-type: y mandatory;
+      scroll-snap-type: none;
       scrollbar-color: rgba(255,255,255,.22) transparent;
       overflow-x: clip;
     }
+    .js.motion-booting { overflow: hidden; }
     html.is-stack-scrubbing { scroll-snap-type: none; }
 
     body {
