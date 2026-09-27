@@ -366,7 +366,7 @@
     .stack-section.is-scrub-active .stack-pill:nth-child(4n+2) { transform: translate3d(0,calc((1 - var(--lane-progress,0)) * 15px),0) rotate(calc((1 - var(--lane-progress,0)) * 1.5deg)); }
     .stack-section.is-scrub-active .stack-pill:nth-child(4n+3) { transform: translate3d(0,calc((1 - var(--lane-progress,0)) * -10px),0) rotate(calc((1 - var(--lane-progress,0)) * 1deg)); }
     .stack-section.is-scrub-active .stack-pill:nth-child(4n) { transform: translate3d(0,calc((1 - var(--lane-progress,0)) * 20px),0) rotate(calc((1 - var(--lane-progress,0)) * -1.5deg)); }
-    .stack-section.is-scrub-active .flow-track { --track-assemble-x:-14vw; animation: none; transform: translate3d(calc((1 - var(--stack-progress)) * var(--track-assemble-x)),0,0); }
+    .stack-section.is-scrub-active .flow-track { --track-assemble-x:-14vw; animation: none; transform: translate3d(calc((1 - var(--stack-progress)) * var(--track-assemble-x) + var(--track-scroll-x,0vw)),0,0); }
     .stack-section.is-scrub-active .flow-lane:nth-child(even) .flow-track { --track-assemble-x:14vw; }
     .stack-heading,.flow-lane { will-change: transform,opacity; }
 

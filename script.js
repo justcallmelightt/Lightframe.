@@ -464,13 +464,16 @@
       const measuredValue = (window.scrollY - bounds.start) / distance;
       const value = Math.min(1, Math.max(0, Number.isFinite(forcedValue) ? forcedValue : measuredValue));
       const visualProgress = .16 + value * .84;
-      const handoffProgress = Math.min(1, Math.max(0, (value - .7) / .28));
+      const handoffProgress = Math.min(1, Math.max(0, (value - .9) / .1));
       flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
       flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
       flowStage.style.setProperty("--stack-handoff", handoffProgress.toFixed(4));
       flowLanes.forEach((lane, index) => {
-        const laneProgress = Math.min(1, Math.max(0, (value + .03 - index * .1) / .72));
+        const laneProgress = Math.min(1, Math.max(0, (value + .03 - index * .09) / .56));
+        const direction = index % 2 ? 1 : -1;
+        const travel = direction * value * (18 + index * 4);
         lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
+        lane.style.setProperty("--track-scroll-x", `${travel.toFixed(3)}vw`);
       });
       flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
       document.documentElement.classList.toggle("is-stack-scrubbing", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
