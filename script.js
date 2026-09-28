@@ -469,8 +469,8 @@
       const measuredValue = (window.scrollY - bounds.start) / distance;
       const value = Math.min(1, Math.max(0, Number.isFinite(forcedValue) ? forcedValue : measuredValue));
       const visualProgress = .16 + value * .84;
-      const assembled = value >= .72;
-      const handoffProgress = Math.min(1, Math.max(0, (value - .92) / .08));
+      const assembled = value >= .7;
+      const handoffProgress = Math.min(1, Math.max(0, (value - .95) / .05));
       flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
       flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
       flowStage.style.setProperty("--stack-handoff", handoffProgress.toFixed(4));
@@ -480,9 +480,13 @@
         const laneProgress = easeOutBack(linearProgress);
         const direction = index % 2 ? 1 : -1;
         const approach = direction * (1 - laneProgress) * (38 + index * 3);
+        const flowProgress = Math.min(1, Math.max(0, (value - .71) / .22));
+        const loopOrigin = index % 2
+          ? linearProgress * -50 + flowProgress * 50
+          : flowProgress * -50;
         const impact = Math.sin(Math.min(1, linearProgress) * Math.PI) * (1 - linearProgress) * 7;
         lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
-        lane.style.setProperty("--track-scroll-x", `${approach.toFixed(3)}vw`);
+        lane.style.setProperty("--track-scroll-x", `calc(${approach.toFixed(3)}vw + ${loopOrigin.toFixed(3)}%)`);
         lane.style.setProperty("--lane-impact", `${impact.toFixed(3)}px`);
       });
       flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
@@ -507,7 +511,7 @@
       stackScrollTrigger = scrollTriggerEngine.create({
         trigger: flowStage,
         start: "top top",
-        end: () => `+=${Math.round(window.innerHeight * 4.8)}`,
+        end: () => `+=${Math.round(window.innerHeight * 7.2)}`,
         pin: flowStage,
         pinSpacing: true,
         anticipatePin: 1,
