@@ -123,19 +123,42 @@
       align-items: end;
       gap: 24px;
       padding: clamp(28px,5vw,72px);
+      isolation: isolate;
+      overflow: hidden;
       color: #fff;
-      background:
-        linear-gradient(110deg,rgba(0,0,0,.22) 0%,rgba(0,0,0,.04) 48%,rgba(0,0,0,.18) 100%),
-        linear-gradient(102deg,var(--brand-teal) 0%,var(--brand-blue) 22%,var(--brand-violet) 40%,var(--brand-magenta) 55%,var(--brand-pink) 69%,var(--brand-gold) 84%,var(--brand-lilac) 100%);
-      background-size: 100% 100%,140% 140%;
-      background-position: center;
+      background: #08080b;
       opacity: 0;
       transform: translate3d(0,110%,0);
       pointer-events: none;
       will-change: transform,opacity;
     }
+    .frame-flash::before {
+      position: absolute;
+      inset: -18% -42%;
+      z-index: -2;
+      background: linear-gradient(102deg,var(--brand-teal) 0%,var(--brand-blue) 15%,var(--brand-violet) 28%,var(--brand-magenta) 42%,var(--brand-pink) 56%,var(--brand-gold) 70%,var(--brand-lilac) 84%,var(--brand-teal) 100%);
+      transform: translate3d(-13%,0,0) scale(1.08) skewX(-5deg);
+      animation: frame-flash-spectrum 2.2s ease-in-out infinite alternate;
+      content: "";
+      will-change: transform;
+    }
+    .frame-flash::after {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      background: linear-gradient(110deg,rgba(0,0,0,.24) 0%,rgba(0,0,0,.02) 48%,rgba(0,0,0,.2) 100%);
+      content: "";
+      pointer-events: none;
+    }
+    .frame-flash-name,.frame-flash-index { position: relative; z-index: 1; }
     .frame-flash-name { max-width: 10ch; font-size: clamp(3rem,9vw,10rem); font-weight: 720; letter-spacing: -.055em; line-height: .98; text-shadow: 0 12px 36px rgba(0,0,0,.22); }
     .frame-flash-index { padding-bottom: .08em; font-size: clamp(.8rem,1.2vw,1.05rem); font-weight: 600; letter-spacing: .08em; text-shadow: 0 4px 18px rgba(0,0,0,.3); }
+
+    @keyframes frame-flash-spectrum {
+      0% { transform: translate3d(-13%,0,0) scale(1.08) skewX(-5deg); }
+      52% { transform: translate3d(3%,-2%,0) scale(1.13) skewX(2deg); }
+      100% { transform: translate3d(13%,2%,0) scale(1.08) skewX(5deg); }
+    }
 
     .site-header {
       --header-surface: rgba(255,255,255,.15);

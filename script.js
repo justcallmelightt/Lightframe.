@@ -864,6 +864,40 @@
     // activation tied to the frame actually occupying the viewport so every
     // frame entry receives the same text motion, regardless of input method.
     let activeFrameIndex = -1;
+    let ambientFrameFlash = null;
+    let ambientFrameFlashToken = 0;
+    const stopAmbientFrameFlash = () => {
+      ambientFrameFlashToken += 1;
+      if (ambientFrameFlash) ambientFrameFlash.cancel();
+      ambientFrameFlash = null;
+    };
+    const playAmbientFrameFlash = (targetIndex, direction = 1) => {
+      const target = frames[targetIndex];
+      if (!target || reduceMotion || !frameFlash || body.classList.contains("is-transitioning")) return;
+      stopAmbientFrameFlash();
+      const token = ambientFrameFlashToken;
+      const axis = direction >= 0 ? 1 : -1;
+      frameFlashName.textContent = target.dataset.frameName || "Lightframe.";
+      frameFlashIndex.textContent = `${String(targetIndex + 1).padStart(2,"0")} / ${String(frames.length).padStart(2,"0")}`;
+      frameFlash.style.opacity = "1";
+      ambientFrameFlash = frameFlash.animate([
+        { transform: `translate3d(0,${axis * 108}%,0)`, offset: 0 },
+        { transform: "translate3d(0,0,0)", offset: .42 },
+        { transform: "translate3d(0,0,0)", offset: .56 },
+        { transform: `translate3d(0,${axis * -108}%,0)`, offset: 1 }
+      ],{
+        duration: 760,
+        easing: "cubic-bezier(.76,0,.24,1)",
+        fill: "both"
+      });
+      ambientFrameFlash.finished.then(() => {
+        if (token !== ambientFrameFlashToken) return;
+        ambientFrameFlash.cancel();
+        ambientFrameFlash = null;
+        frameFlash.style.opacity = "0";
+        frameFlash.style.transform = `translate3d(0,${axis * -110}%,0)`;
+      }).catch(() => {});
+    };
     const activateFrameScene = (index, direction = 1, force = false) => {
       const frame = frames[index];
       if (!frame || (!force && index === activeFrameIndex)) return;
@@ -871,6 +905,7 @@
       activeFrameIndex = index;
       frames.forEach((candidate, candidateIndex) => candidate.classList.toggle("is-scene-active", candidateIndex === index));
       const resolvedDirection = direction || (previousIndex < 0 ? 1 : Math.sign(index - previousIndex) || 1);
+      if (previousIndex >= 0 && previousIndex !== index && !frameWheelLocked) playAmbientFrameFlash(index,resolvedDirection);
       animateScene(frame, resolvedDirection);
       if (frame === flowStage) requestAnimationFrame(boostTechnology);
     };
@@ -957,6 +992,7 @@
     const goToFrame = (targetIndex, direction, gestureVelocity = 0) => {
       const target = frames[targetIndex];
       if (!target) return;
+      stopAmbientFrameFlash();
       frameTransitionToken += 1;
       const token = frameTransitionToken;
 
