@@ -470,9 +470,11 @@
       const value = Math.min(1, Math.max(0, Number.isFinite(forcedValue) ? forcedValue : measuredValue));
       const visualProgress = .16 + value * .84;
       const assembled = value >= .7;
-      const handoffProgress = Math.min(1, Math.max(0, (value - .95) / .05));
+      const gradientProgress = Math.min(1, Math.max(0, (value - .04) / .91));
+      const handoffProgress = Math.min(1, Math.max(0, (value - .965) / .035));
       flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
       flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
+      flowStage.style.setProperty("--stack-gradient-progress", gradientProgress.toFixed(4));
       flowStage.style.setProperty("--stack-handoff", handoffProgress.toFixed(4));
       flowLanes.forEach((lane, index) => {
         const laneStart = .06 + index * .115;
@@ -480,10 +482,10 @@
         const laneProgress = easeOutBack(linearProgress);
         const direction = index % 2 ? 1 : -1;
         const approach = direction * (1 - laneProgress) * (38 + index * 3);
-        const flowProgress = Math.min(1, Math.max(0, (value - .71) / .22));
-        const loopOrigin = index % 2
+        const flowProgress = Math.min(1, Math.max(0, (value - .68) / .275));
+        const loopOrigin = direction > 0
           ? linearProgress * -50 + flowProgress * 50
-          : flowProgress * -50;
+          : -50 + linearProgress * 50 - flowProgress * 50;
         const impact = Math.sin(Math.min(1, linearProgress) * Math.PI) * (1 - linearProgress) * 7;
         lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
         lane.style.setProperty("--track-scroll-x", `calc(${approach.toFixed(3)}vw + ${loopOrigin.toFixed(3)}%)`);
@@ -511,7 +513,7 @@
       stackScrollTrigger = scrollTriggerEngine.create({
         trigger: flowStage,
         start: "top top",
-        end: () => `+=${Math.round(window.innerHeight * 7.2)}`,
+        end: () => `+=${Math.round(window.innerHeight * 8.4)}`,
         pin: flowStage,
         pinSpacing: true,
         anticipatePin: 1,
