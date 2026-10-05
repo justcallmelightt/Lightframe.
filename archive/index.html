@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Lightframe.의 아이덴티티, 인터페이스, 시각 실험을 모은 작업 아카이브." />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Archive — Lightframe.</title>
+  <link rel="preload" href="./fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <main id="archive-main">
+    <header class="header">
+      <a href="../#works" class="brand pressable" aria-label="Lightframe 작업 섹션으로 돌아가기">← Lightframe.</a>
+      <span class="count">Archive / Selected works / 06</span>
+      <button class="mode pressable" type="button" aria-label="다크 모드로 전환" aria-pressed="false"><i aria-hidden="true"></i><span>Light</span></button>
+    </header>
+
+    <section class="archive" id="archive" aria-label="디자인 작품 아카이브">
+      <div class="stage">
+        <div class="ambient" aria-hidden="true"><i></i><i></i></div>
+        <div class="crosshair crosshair-a" aria-hidden="true"></div>
+        <div class="crosshair crosshair-b" aria-hidden="true"></div>
+        <h1><span class="title-spark" aria-hidden="true">✦</span>Selected<br />Works</h1>
+        <p class="coordinates" aria-hidden="true">37.5665° N<br />126.9780° E</p>
+        <p class="hint">Scroll ↓</p>
+        <div class="works">
+          <button class="work pressable lightframe" type="button" data-kind="Identity" data-site="../#hero" aria-label="Lightframe 자세히 보기"><span class="image"><img src="./works/lightframe.png" alt="색상 스펙트럼 위에 Frame 로고가 놓인 Lightframe 그래픽" fetchpriority="high" /></span><span class="label"><span>01</span><strong>Lightframe</strong><span>Identity</span></span></button>
+          <button class="work pressable tile" type="button" data-kind="Product" data-site="https://tile0.vercel.app/" aria-label="Tile 자세히 보기"><span class="image"><img src="./works/tile.png" alt="흰 배경 위 네 개의 검은 수직 막대로 구성된 Tile 심볼" fetchpriority="high" /></span><span class="label"><span>02</span><strong>Tile</strong><span>Product</span></span></button>
+          <button class="work pressable luxer" type="button" data-kind="Branding" aria-label="Luxer 자세히 보기"><span class="image"><img src="./works/luxer-symbol.png" alt="보라색 배경 위 흰색 마름모 형태의 Luxer 그래픽" loading="lazy" /></span><span class="label"><span>03</span><strong>Luxer</strong><span>Branding</span></span></button>
+          <button class="work pressable aura" type="button" data-kind="Identity" aria-label="Aura 자세히 보기"><span class="image"><img src="./works/aura.png" alt="분홍색과 보라색 배경 위 흰색 Aura 심볼" loading="lazy" /></span><span class="label"><span>04</span><strong>Aura</strong><span>Identity</span></span></button>
+          <button class="work pressable yul" type="button" data-kind="Personal" aria-label="I'm Yul. 자세히 보기"><span class="image"><img src="./works/im-yul.png" alt="I'm Yul 문구를 세리프 타이포그래피로 구성한 그래픽" loading="lazy" /></span><span class="label"><span>05</span><strong>I'm Yul.</strong><span>Personal</span></span></button>
+          <button class="work pressable stripes" type="button" data-kind="Editorial" aria-label="Stripes and Squares 자세히 보기"><span class="image"><img src="./works/stripes-squares.png" alt="검정과 흰색의 줄무늬 및 사각형을 다룬 편집 디자인" loading="lazy" /></span><span class="label"><span>06</span><strong>Stripes and Squares</strong><span>Editorial</span></span></button>
+        </div>
+        <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+    </section>
+    <footer><span class="footer-spark" aria-hidden="true">✦</span><p>justcallmelight_</p><p>Design archive<br />Seoul, 2026</p></footer>
+  </main>
+
+  <div class="viewer" aria-hidden="true">
+    <button class="backdrop" type="button" aria-label="작품 닫기" tabindex="-1"></button>
+    <dialog class="sheet" aria-label="작품 상세">
+      <div class="sheet-head"><span class="sheet-index"></span><button class="close pressable" type="button">Close</button></div>
+      <div class="large-image"><img src="" alt="" /></div>
+      <div class="sheet-foot"><h2></h2><div class="sheet-actions"><p></p><a class="visit pressable" hidden>사이트 바로 가기 <span aria-hidden="true">↗</span></a></div></div>
+    </dialog>
+  </div>
+</body>
+</html>

@@ -15,6 +15,92 @@
     const scrollTriggerEngine = window.ScrollTrigger;
     const LenisEngine = window.Lenis;
     let motionSuspended = false;
+    let programmaticFrameJumpUntil = 0;
+
+    const contact = document.querySelector(".contact");
+    const contactSquares = contact?.querySelector(".contact-squares");
+    if (contact && contactSquares) {
+      const context = contactSquares.getContext("2d", { alpha: false });
+      if (context) {
+        const base = document.createElement("canvas");
+        const baseContext = base.getContext("2d", { alpha: false });
+        let columns = 0;
+        let rows = 0;
+        let pitch = 8;
+        let visible = false;
+        let blinkTimer = 0;
+        const noise = (x, y) => {
+          const value = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+          return value - Math.floor(value);
+        };
+        const fieldNoise = (x, y) => {
+          const left = Math.floor(x);
+          const top = Math.floor(y);
+          const dx = x - left;
+          const dy = y - top;
+          const easeX = dx * dx * (3 - 2 * dx);
+          const easeY = dy * dy * (3 - 2 * dy);
+          const upper = noise(left, top) * (1 - easeX) + noise(left + 1, top) * easeX;
+          const lower = noise(left, top + 1) * (1 - easeX) + noise(left + 1, top + 1) * easeX;
+          return upper * (1 - easeY) + lower * easeY;
+        };
+        const drawBase = () => {
+          if (!baseContext) return;
+          baseContext.fillStyle = "#080808";
+          baseContext.fillRect(0, 0, base.width, base.height);
+          const size = pitch - 1.5;
+          for (let row = 0; row < rows; row += 1) {
+            for (let column = 0; column < columns; column += 1) {
+              const grain = noise(column, row);
+              const cloud = fieldNoise(column * .045, row * .045) * .48
+                + fieldNoise(column * .14 + 17, row * .14 + 29) * .32
+                + grain * .2;
+              const light = Math.max(0, Math.min(1, (cloud - .32) * 2.3));
+              if (light < .17) continue;
+              const tone = Math.round(22 + Math.pow(light, .55) * 233);
+              baseContext.fillStyle = `rgb(${tone},${tone},${tone})`;
+              baseContext.fillRect(column * pitch, row * pitch, size, size);
+            }
+          }
+          context.drawImage(base, 0, 0);
+        };
+        const resizeSquares = () => {
+          const rect = contact.getBoundingClientRect();
+          pitch = rect.width < 650 ? 9 : 8;
+          contactSquares.width = base.width = Math.max(1, Math.ceil(rect.width));
+          contactSquares.height = base.height = Math.max(1, Math.ceil(rect.height));
+          columns = Math.ceil(base.width / pitch);
+          rows = Math.ceil(base.height / pitch);
+          drawBase();
+        };
+        const blink = () => {
+          context.drawImage(base, 0, 0);
+          const size = pitch - 1.5;
+          const changes = Math.min(560, Math.round(columns * rows * .012));
+          for (let index = 0; index < changes; index += 1) {
+            const column = Math.floor(Math.random() * columns);
+            const row = Math.floor(Math.random() * rows);
+            const tone = Math.random() < .38 ? 8 : 170 + Math.floor(Math.random() * 86);
+            context.fillStyle = `rgb(${tone},${tone},${tone})`;
+            context.fillRect(column * pitch, row * pitch, size, size);
+          }
+        };
+        const syncBlink = () => {
+          clearInterval(blinkTimer);
+          blinkTimer = 0;
+          if (visible && !document.hidden && !reduceMotion) blinkTimer = window.setInterval(blink, 110);
+          else context.drawImage(base, 0, 0);
+        };
+        const observer = new IntersectionObserver(([entry]) => {
+          visible = entry.isIntersecting;
+          syncBlink();
+        }, { threshold: .05 });
+        observer.observe(contact);
+        new ResizeObserver(resizeSquares).observe(contact);
+        document.addEventListener("visibilitychange", syncBlink);
+        resizeSquares();
+      }
+    }
 
     let smoothScroll = null;
     if (!reduceMotion && LenisEngine && gsapEngine) {
@@ -47,7 +133,7 @@
           </div>
           <i class="hero-beat-line"></i>
           <i class="hero-beat-line"></i>
-          <span class="hero-beat-index"><span>FRAME</span> <span>01</span> / <span>05</span></span>
+          <span class="hero-beat-index"><span>FRAME</span> <span>01</span> / <span>06</span></span>
         </div>
         <div class="hero-ambient" aria-hidden="true">
           <i class="hero-orb hero-orb-a"></i>
@@ -189,6 +275,9 @@
         intro?.remove();
         smoothScroll?.start();
         scrollTriggerEngine?.refresh();
+        const hashTarget = window.location.hash && document.querySelector(window.location.hash);
+        const hashFrameIndex = frames.indexOf(hashTarget);
+        if (hashFrameIndex >= 0) alignFrame(hashFrameIndex);
         syncSceneFromViewport(true);
       });
     };
@@ -266,6 +355,27 @@
     }, { threshold: .14, rootMargin: "0px 0px -4%" });
     document.querySelectorAll(".reveal").forEach((element) => revealObserver.observe(element));
 
+    // Small editorial details stay inside the original frames; they never create a new scene.
+    const highlight = document.querySelector(".scroll-highlight");
+    const archiveCopy = document.querySelector(".archive-copy");
+    if (archiveCopy) {
+      if (reduceMotion) archiveCopy.classList.add("is-block-visible");
+      else {
+        document.documentElement.classList.add("motion-detail-ready");
+        const blockObserver = new IntersectionObserver(([entry]) => {
+          if (!entry.isIntersecting) return;
+          archiveCopy.classList.add("is-block-visible");
+          blockObserver.disconnect();
+        }, { threshold: .45 });
+        blockObserver.observe(archiveCopy);
+      }
+    }
+    const accentFrame = highlight?.closest("#about");
+    let accentTimer = 0;
+    const revealAboutAccent = () => {
+      if (!accentFrame?.classList.contains("is-scene-active") || body.classList.contains("is-transitioning")) return;
+      requestAnimationFrame(() => accentFrame.classList.add("is-accent-revealed"));
+    };
     const principles = document.querySelector(".principles");
     const aboutFrame = document.querySelector("#about");
     const principleRows = [...document.querySelectorAll(".principle")];
@@ -456,6 +566,65 @@
     };
 
     let stackProgressRaf = 0;
+    let gradientIdleTimer = 0;
+    let gradientIdleRaf = 0;
+    let gradientIdleStartedAt = 0;
+    let gradientIdleOffset = 0;
+    let gradientLastFrameAt = 0;
+    let gradientLastProgress = null;
+    let gradientWasEligible = false;
+    const paintGradientIdle = () => {
+      flowStage.style.setProperty("--stack-gradient-idle-offset", gradientIdleOffset.toFixed(4));
+    };
+    const tickGradientIdle = (time) => {
+      gradientIdleRaf = 0;
+      if (document.hidden || !isInsideStackScroll() || flowStage.classList.contains("is-handoff-active")) {
+        gradientIdleOffset = 0;
+        gradientLastFrameAt = 0;
+        paintGradientIdle();
+        return;
+      }
+      const delta = gradientLastFrameAt ? Math.min(50, time - gradientLastFrameAt) : 16;
+      gradientLastFrameAt = time;
+      const elapsed = gradientIdleStartedAt ? time - gradientIdleStartedAt : 0;
+      const target = gradientIdleStartedAt ? Math.sin(elapsed * Math.PI * 2 / 8000) * .16 : 0;
+      gradientIdleOffset += (target - gradientIdleOffset) * (1 - Math.exp(-delta / (gradientIdleStartedAt ? 420 : 180)));
+      if (!gradientIdleStartedAt && Math.abs(gradientIdleOffset) < .0005) gradientIdleOffset = 0;
+      paintGradientIdle();
+      if (gradientIdleStartedAt || gradientIdleOffset) gradientIdleRaf = requestAnimationFrame(tickGradientIdle);
+      else gradientLastFrameAt = 0;
+    };
+    const updateGradientIdle = (progress, inStack) => {
+      const eligible = inStack && progress < .965 && !document.hidden;
+      if (gradientLastProgress !== null && Math.abs(progress - gradientLastProgress) < .0001 && eligible === gradientWasEligible) return;
+      gradientLastProgress = progress;
+      gradientWasEligible = eligible;
+      clearTimeout(gradientIdleTimer);
+      gradientIdleStartedAt = 0;
+      if (!gradientIdleRaf && gradientIdleOffset) gradientIdleRaf = requestAnimationFrame(tickGradientIdle);
+      if (eligible) {
+        gradientIdleTimer = window.setTimeout(() => {
+          gradientIdleStartedAt = performance.now();
+          gradientLastFrameAt = 0;
+          if (!gradientIdleRaf) gradientIdleRaf = requestAnimationFrame(tickGradientIdle);
+        }, 1000);
+      }
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        gradientLastProgress = null;
+        queueStackProgress();
+        return;
+      }
+      clearTimeout(gradientIdleTimer);
+      cancelAnimationFrame(gradientIdleRaf);
+      gradientIdleRaf = 0;
+      gradientIdleStartedAt = 0;
+      gradientIdleOffset = 0;
+      gradientLastFrameAt = 0;
+      gradientWasEligible = false;
+      if (flowStage) paintGradientIdle();
+    });
     const easeOutBack = (value) => {
       const overshoot = 1.70158;
       const shifted = value - 1;
@@ -495,6 +664,7 @@
       flowStage.classList.toggle("is-stack-assembled", assembled);
       flowStage.classList.toggle("is-handoff-active", handoffProgress > 0);
       document.documentElement.classList.toggle("is-stack-scrubbing", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
+      updateGradientIdle(value, isInsideStackScroll());
     };
     const queueStackProgress = () => {
       if (stackProgressRaf) return;
@@ -528,6 +698,8 @@
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         if (!hashTarget) return;
         const targetTop = hashTarget === flowStage ? stackScrollTrigger.start : hashTarget.offsetTop;
+        programmaticFrameJumpUntil = performance.now() + 700;
+        lastObservedScrollY = targetTop;
         setScrollPosition(targetTop);
         if (hashTarget === flowStage) renderStackProgress(0);
       });
@@ -535,9 +707,14 @@
       requestAnimationFrame(() => {
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         if (hashTarget === flowStage) {
+          programmaticFrameJumpUntil = performance.now() + 700;
           setScrollPosition(flowStage.offsetTop);
           renderStackProgress(0);
           return;
+        }
+        if (hashTarget?.classList.contains("frame")) {
+          programmaticFrameJumpUntil = performance.now() + 700;
+          setScrollPosition(hashTarget.offsetTop);
         }
         renderStackProgress();
       });
@@ -549,6 +726,7 @@
       ["about", ".section-label,.statement-side,.statement-copy,.principle"],
       ["now", ".section-label,.now-title,.interest"],
       ["stack-section", ".section-label,.stack-heading h2,.flow-field,.flow-note"],
+      ["archive-frame", ".archive-index,.archive-title,.archive-copy,.archive-link,.archive-preview-card,.archive-frame-bottom"],
       ["contact", ".section-label,.contact-title,.contact-copy,.magnetic,.footer-line"]
     ]);
 
@@ -593,7 +771,7 @@
     let heroIdleTimeline = null;
     const animateScene = (frame, direction = 1) => {
       if (!frame) return;
-      siteHeader?.classList.toggle("is-on-light", frame === flowStage);
+      siteHeader?.classList.toggle("is-on-light", frame === flowStage || frame.id === "works");
       const sceneKey = [...sceneSelectors.keys()].find((key) => frame.classList.contains(key));
       const selector = sceneSelectors.get(sceneKey);
       if (!selector) return;
@@ -898,6 +1076,7 @@
         ambientFrameFlash = null;
         frameFlash.style.opacity = "0";
         frameFlash.style.transform = `translate3d(0,${axis * -110}%,0)`;
+        if (target === accentFrame) revealAboutAccent();
       }).catch(() => {});
     };
     const activateFrameScene = (index, direction = 1, force = false) => {
@@ -905,10 +1084,15 @@
       if (!frame || (!force && index === activeFrameIndex)) return;
       const previousIndex = activeFrameIndex;
       activeFrameIndex = index;
+      clearTimeout(accentTimer);
+      accentFrame?.classList.remove("is-accent-revealed");
       frames.forEach((candidate, candidateIndex) => candidate.classList.toggle("is-scene-active", candidateIndex === index));
       const resolvedDirection = direction || (previousIndex < 0 ? 1 : Math.sign(index - previousIndex) || 1);
       if (previousIndex >= 0 && previousIndex !== index && !frameWheelLocked) playAmbientFrameFlash(index,resolvedDirection);
       animateScene(frame, resolvedDirection);
+      if (frame === accentFrame && (reduceMotion || previousIndex < 0)) {
+        accentTimer = window.setTimeout(revealAboutAccent, reduceMotion ? 0 : 520);
+      }
       if (frame === flowStage) requestAnimationFrame(boostTechnology);
     };
 
@@ -922,6 +1106,10 @@
     let lastObservedScrollY = window.scrollY;
     let stackTraversalGuard = false;
     const guardStackTraversal = () => {
+      if (performance.now() < programmaticFrameJumpUntil) {
+        lastObservedScrollY = window.scrollY;
+        return false;
+      }
       if (stackTraversalGuard || reduceMotion) {
         lastObservedScrollY = window.scrollY;
         return false;
@@ -968,6 +1156,8 @@
       const frame = frames[index];
       if (!frame) return;
       const top = frame === flowStage && stackScrollTrigger ? stackScrollTrigger.start : frame.offsetTop;
+      programmaticFrameJumpUntil = performance.now() + 700;
+      lastObservedScrollY = top;
       setScrollPosition(top);
     };
 
@@ -1001,6 +1191,7 @@
       if (reduceMotion || !frameFlash) {
         alignFrame(targetIndex);
         activateFrameScene(targetIndex, direction, true);
+        if (target === accentFrame) revealAboutAccent();
         if (!wheelInputReady) releaseWheelInput();
         return;
       }
@@ -1073,6 +1264,7 @@
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
+        if (target === accentFrame) revealAboutAccent();
         if (!wheelInputReady) releaseWheelInput();
       };
       requestAnimationFrame(renderTransition);
@@ -1123,8 +1315,46 @@
       if (nextIndex !== currentIndex) goToFrame(nextIndex, direction, 0);
     });
 
+    // Settle ordinary full-screen scenes on their exact top edge only after
+    // input has stopped. The long, scrubbed technology scene remains free to
+    // track every pixel of the user's scroll in either direction.
+    let frameSnapTimer = 0;
+    let touchScrolling = false;
+    const settleFrame = () => {
+      frameSnapTimer = 0;
+      if (frameWheelLocked || motionSuspended || touchScrolling || performance.now() < programmaticFrameJumpUntil) return;
+      if (performance.now() - lastWheelAt < 180) {
+        frameSnapTimer = window.setTimeout(settleFrame, 180);
+        return;
+      }
+      const bounds = stackScrollBounds();
+      if (bounds && window.scrollY > bounds.start + 2 && window.scrollY < bounds.end - 2) return;
+      const index = nearestFrameIndex();
+      const frame = frames[index];
+      if (!frame || frame === flowStage) return;
+      const distance = Math.abs(frame.offsetTop - window.scrollY);
+      if (distance < 2 || distance > window.innerHeight * .48) return;
+      programmaticFrameJumpUntil = performance.now() + 350;
+      lastObservedScrollY = frame.offsetTop;
+      setScrollPosition(frame.offsetTop);
+      queueSceneSync();
+    };
+    const queueFrameSnap = (delay = 220) => {
+      clearTimeout(frameSnapTimer);
+      frameSnapTimer = window.setTimeout(settleFrame, delay);
+    };
+    window.addEventListener("scroll", () => queueFrameSnap(), { passive: true });
     window.addEventListener("scrollend", () => {
       if (!frameWheelLocked) queueSceneSync();
+      queueFrameSnap(90);
+    }, { passive: true });
+    window.addEventListener("touchstart", () => {
+      touchScrolling = true;
+      clearTimeout(frameSnapTimer);
+    }, { passive: true });
+    window.addEventListener("touchend", () => {
+      touchScrolling = false;
+      queueFrameSnap();
     }, { passive: true });
 
     window.addEventListener("resize", () => {
