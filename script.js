@@ -1,3 +1,4 @@
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const body = document.body;
     const intro = document.querySelector(".intro-screen");
@@ -5,12 +6,36 @@
     const hero = document.querySelector(".hero");
     const interestCards = [...document.querySelectorAll(".interest")];
     const flowStage = document.querySelector("[data-flow-stage]");
+    const flowLanes = flowStage ? [...flowStage.querySelectorAll(".flow-lane")] : [];
     const siteHeader = document.querySelector(".site-header");
     const frameFlash = document.querySelector(".frame-flash");
     const frameFlashName = document.querySelector(".frame-flash-name");
     const frameFlashIndex = document.querySelector(".frame-flash-index");
     const gsapEngine = window.gsap;
+    const scrollTriggerEngine = window.ScrollTrigger;
+    const LenisEngine = window.Lenis;
     let motionSuspended = false;
+
+    let smoothScroll = null;
+    if (!reduceMotion && LenisEngine && gsapEngine) {
+      smoothScroll = new LenisEngine({
+        lerp: .06,
+        smoothWheel: true,
+        wheelMultiplier: .45,
+        anchors: true
+      });
+      if (scrollTriggerEngine) smoothScroll.on("scroll", scrollTriggerEngine.update);
+      gsapEngine.ticker.add((time) => smoothScroll.raf(time * 1000));
+      gsapEngine.ticker.lagSmoothing(0);
+      if (intro) smoothScroll.stop();
+    }
+    const setScrollPosition = (top, immediate = true) => {
+      if (smoothScroll) {
+        smoothScroll.scrollTo(top, immediate ? { immediate: true, force: true } : { duration: .8, force: true });
+        return;
+      }
+      window.scrollTo({ top, behavior: immediate ? "auto" : "smooth" });
+    };
 
     if (hero && !reduceMotion) {
       hero.insertAdjacentHTML("afterbegin", `
@@ -154,11 +179,17 @@
     }
 
     const finishIntro = () => {
+      if (!window.location.hash || window.location.hash === "#home") {
+        window.scrollTo(0, 0);
+        setScrollPosition(0);
+      }
       body.classList.add("ready");
       requestAnimationFrame(() => {
-        syncSceneFromViewport(true);
         document.documentElement.classList.remove("motion-booting");
         intro?.remove();
+        smoothScroll?.start();
+        scrollTriggerEngine?.refresh();
+        syncSceneFromViewport(true);
       });
     };
 
@@ -397,9 +428,22 @@
     }
 
     const frames = [...document.querySelectorAll(".frame")];
+    const flowStageIndex = frames.indexOf(flowStage);
     let frameWheelLocked = false;
     let frameTransitionToken = 0;
+    let stackScrollTrigger = null;
+    const stackScrollBounds = () => {
+      if (!flowStage) return null;
+      if (stackScrollTrigger) return { start: stackScrollTrigger.start, end: stackScrollTrigger.end };
+      const start = flowStage.offsetTop;
+      return { start, end: start + flowStage.offsetHeight - window.innerHeight };
+    };
+    const isInsideStackScroll = (slack = 2) => {
+      const bounds = stackScrollBounds();
+      return bounds && window.scrollY >= bounds.start - slack && window.scrollY <= bounds.end + slack;
+    };
     const nearestFrameIndex = () => {
+      if (!reduceMotion && isInsideStackScroll()) return flowStageIndex;
       let nearestIndex = 0;
       let nearestDistance = Infinity;
       frames.forEach((frame, index) => {
@@ -410,6 +454,95 @@
       });
       return nearestIndex;
     };
+
+    let stackProgressRaf = 0;
+    const easeOutBack = (value) => {
+      const overshoot = 1.70158;
+      const shifted = value - 1;
+      return 1 + (overshoot + 1) * shifted ** 3 + overshoot * shifted ** 2;
+    };
+    const renderStackProgress = (forcedValue) => {
+      stackProgressRaf = 0;
+      const bounds = stackScrollBounds();
+      if (!bounds || reduceMotion) return;
+      const distance = Math.max(1, bounds.end - bounds.start);
+      const measuredValue = (window.scrollY - bounds.start) / distance;
+      const value = Math.min(1, Math.max(0, Number.isFinite(forcedValue) ? forcedValue : measuredValue));
+      const visualProgress = .16 + value * .84;
+      const assembled = value >= .7;
+      const gradientProgress = Math.min(1, Math.max(0, (value - .04) / .91));
+      const handoffProgress = Math.min(1, Math.max(0, (value - .965) / .035));
+      flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
+      flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
+      flowStage.style.setProperty("--stack-gradient-progress", gradientProgress.toFixed(4));
+      flowStage.style.setProperty("--stack-handoff", handoffProgress.toFixed(4));
+      flowLanes.forEach((lane, index) => {
+        const laneStart = .06 + index * .115;
+        const linearProgress = Math.min(1, Math.max(0, (value - laneStart) / .18));
+        const laneProgress = easeOutBack(linearProgress);
+        const direction = index % 2 ? 1 : -1;
+        const approach = direction * (1 - laneProgress) * (38 + index * 3);
+        const flowProgress = Math.min(1, Math.max(0, (value - .68) / .275));
+        const loopOrigin = direction > 0
+          ? linearProgress * -50 + flowProgress * 50
+          : -50 + linearProgress * 50 - flowProgress * 50;
+        const impact = Math.sin(Math.min(1, linearProgress) * Math.PI) * (1 - linearProgress) * 7;
+        lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
+        lane.style.setProperty("--track-scroll-x", `calc(${approach.toFixed(3)}vw + ${loopOrigin.toFixed(3)}%)`);
+        lane.style.setProperty("--lane-impact", `${impact.toFixed(3)}px`);
+      });
+      flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
+      flowStage.classList.toggle("is-stack-assembled", assembled);
+      flowStage.classList.toggle("is-handoff-active", handoffProgress > 0);
+      document.documentElement.classList.toggle("is-stack-scrubbing", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
+    };
+    const queueStackProgress = () => {
+      if (stackProgressRaf) return;
+      stackProgressRaf = requestAnimationFrame(() => renderStackProgress());
+    };
+    window.addEventListener("scroll", queueStackProgress, { passive: true });
+    window.addEventListener("resize", queueStackProgress, { passive: true });
+    const canUseStackScrollTrigger = gsapEngine && scrollTriggerEngine && flowStage && !reduceMotion;
+    if (flowStage && !reduceMotion && !canUseStackScrollTrigger) {
+      // Keep the complete stack story working when CDN motion libraries are
+      // unavailable (notably when this page is opened directly with file://).
+      flowStage.classList.add("is-native-stack-scroll");
+    }
+    if (canUseStackScrollTrigger) {
+      gsapEngine.registerPlugin(scrollTriggerEngine);
+      stackScrollTrigger = scrollTriggerEngine.create({
+        trigger: flowStage,
+        start: "top top",
+        end: () => `+=${Math.round(window.innerHeight * 8.4)}`,
+        pin: flowStage,
+        pinSpacing: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => renderStackProgress(self.progress),
+        onRefresh: (self) => renderStackProgress(self.progress)
+      });
+      window.addEventListener("load", () => scrollTriggerEngine.refresh(), { once: true });
+      document.fonts?.ready.then(() => scrollTriggerEngine.refresh());
+      requestAnimationFrame(() => {
+        scrollTriggerEngine.refresh();
+        const hashTarget = window.location.hash && document.querySelector(window.location.hash);
+        if (!hashTarget) return;
+        const targetTop = hashTarget === flowStage ? stackScrollTrigger.start : hashTarget.offsetTop;
+        setScrollPosition(targetTop);
+        if (hashTarget === flowStage) renderStackProgress(0);
+      });
+    } else if (flowStage && !reduceMotion) {
+      requestAnimationFrame(() => {
+        const hashTarget = window.location.hash && document.querySelector(window.location.hash);
+        if (hashTarget === flowStage) {
+          setScrollPosition(flowStage.offsetTop);
+          renderStackProgress(0);
+          return;
+        }
+        renderStackProgress();
+      });
+    }
+    requestAnimationFrame(() => renderStackProgress());
 
     const sceneSelectors = new Map([
       ["hero", ".hero-meta,.code-label,.hero-title .line,.scroll-cue,.hero-description"],
@@ -733,6 +866,40 @@
     // activation tied to the frame actually occupying the viewport so every
     // frame entry receives the same text motion, regardless of input method.
     let activeFrameIndex = -1;
+    let ambientFrameFlash = null;
+    let ambientFrameFlashToken = 0;
+    const stopAmbientFrameFlash = () => {
+      ambientFrameFlashToken += 1;
+      if (ambientFrameFlash) ambientFrameFlash.cancel();
+      ambientFrameFlash = null;
+    };
+    const playAmbientFrameFlash = (targetIndex, direction = 1) => {
+      const target = frames[targetIndex];
+      if (!target || reduceMotion || !frameFlash || body.classList.contains("is-transitioning")) return;
+      stopAmbientFrameFlash();
+      const token = ambientFrameFlashToken;
+      const axis = direction >= 0 ? 1 : -1;
+      frameFlashName.textContent = target.dataset.frameName || "Lightframe.";
+      frameFlashIndex.textContent = `${String(targetIndex + 1).padStart(2,"0")} / ${String(frames.length).padStart(2,"0")}`;
+      frameFlash.style.opacity = "1";
+      ambientFrameFlash = frameFlash.animate([
+        { transform: `translate3d(0,${axis * 108}%,0)`, offset: 0 },
+        { transform: "translate3d(0,0,0)", offset: .42 },
+        { transform: "translate3d(0,0,0)", offset: .56 },
+        { transform: `translate3d(0,${axis * -108}%,0)`, offset: 1 }
+      ],{
+        duration: 760,
+        easing: "cubic-bezier(.76,0,.24,1)",
+        fill: "both"
+      });
+      ambientFrameFlash.finished.then(() => {
+        if (token !== ambientFrameFlashToken) return;
+        ambientFrameFlash.cancel();
+        ambientFrameFlash = null;
+        frameFlash.style.opacity = "0";
+        frameFlash.style.transform = `translate3d(0,${axis * -110}%,0)`;
+      }).catch(() => {});
+    };
     const activateFrameScene = (index, direction = 1, force = false) => {
       const frame = frames[index];
       if (!frame || (!force && index === activeFrameIndex)) return;
@@ -740,6 +907,7 @@
       activeFrameIndex = index;
       frames.forEach((candidate, candidateIndex) => candidate.classList.toggle("is-scene-active", candidateIndex === index));
       const resolvedDirection = direction || (previousIndex < 0 ? 1 : Math.sign(index - previousIndex) || 1);
+      if (previousIndex >= 0 && previousIndex !== index && !frameWheelLocked) playAmbientFrameFlash(index,resolvedDirection);
       animateScene(frame, resolvedDirection);
       if (frame === flowStage) requestAnimationFrame(boostTechnology);
     };
@@ -751,6 +919,40 @@
     };
 
     let sceneSyncRaf = 0;
+    let lastObservedScrollY = window.scrollY;
+    let stackTraversalGuard = false;
+    const guardStackTraversal = () => {
+      if (stackTraversalGuard || reduceMotion) {
+        lastObservedScrollY = window.scrollY;
+        return false;
+      }
+      const bounds = stackScrollBounds();
+      if (!bounds) {
+        lastObservedScrollY = window.scrollY;
+        return false;
+      }
+      const currentY = window.scrollY;
+      let guardedY = null;
+      if (lastObservedScrollY < bounds.start - 2 && currentY > bounds.end + 2) {
+        guardedY = bounds.start;
+      } else if (lastObservedScrollY > bounds.end + 2 && currentY < bounds.start - 2) {
+        guardedY = bounds.end;
+      } else if (lastObservedScrollY >= bounds.start - 2 && lastObservedScrollY < bounds.end - 2 && currentY > bounds.end + 2) {
+        guardedY = Math.min(bounds.end - 2, lastObservedScrollY + window.innerHeight * .34);
+      } else if (lastObservedScrollY <= bounds.end + 2 && lastObservedScrollY > bounds.start + 2 && currentY < bounds.start - 2) {
+        guardedY = Math.max(bounds.start + 2, lastObservedScrollY - window.innerHeight * .34);
+      }
+      if (guardedY === null) {
+        lastObservedScrollY = currentY;
+        return false;
+      }
+      stackTraversalGuard = true;
+      lastObservedScrollY = guardedY;
+      setScrollPosition(guardedY);
+      renderStackProgress();
+      requestAnimationFrame(() => { stackTraversalGuard = false; });
+      return true;
+    };
     const queueSceneSync = () => {
       if (sceneSyncRaf || frameWheelLocked) return;
       sceneSyncRaf = requestAnimationFrame(() => {
@@ -758,12 +960,15 @@
         if (!frameWheelLocked) syncSceneFromViewport();
       });
     };
-    window.addEventListener("scroll", queueSceneSync, { passive: true });
+    window.addEventListener("scroll", () => {
+      if (!guardStackTraversal()) queueSceneSync();
+    }, { passive: true });
 
     const alignFrame = (index) => {
       const frame = frames[index];
       if (!frame) return;
-      window.scrollTo({ top: frame.offsetTop, behavior: "auto" });
+      const top = frame === flowStage && stackScrollTrigger ? stackScrollTrigger.start : frame.offsetTop;
+      setScrollPosition(top);
     };
 
     let wheelAccumulator = 0;
@@ -789,6 +994,7 @@
     const goToFrame = (targetIndex, direction, gestureVelocity = 0) => {
       const target = frames[targetIndex];
       if (!target) return;
+      stopAmbientFrameFlash();
       frameTransitionToken += 1;
       const token = frameTransitionToken;
 
@@ -885,26 +1091,14 @@
       });
     });
 
-    window.addEventListener("wheel", (event) => {
-      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) return;
-      event.preventDefault();
-      const now = performance.now();
-      lastWheelAt = now;
-      if (frameWheelLocked || !wheelInputReady || !frames.length) {
-        wheelAccumulator = 0;
-        return;
-      }
-      wheelAccumulator += event.deltaY;
-      if (Math.abs(wheelAccumulator) < 12) return;
-      const wheelDirection = Math.sign(wheelAccumulator);
-      const wheelVelocity = wheelAccumulator;
+    // Keep wheel scrolling native. ScrollTrigger uses the browser scroll position as
+    // its single source of truth, so Chrome trackpad momentum remains reversible and
+    // cannot be misread as a request to skip directly to the next full-screen frame.
+    window.addEventListener("wheel", () => {
+      lastWheelAt = performance.now();
       wheelAccumulator = 0;
-      const currentIndex = nearestFrameIndex();
-      const nextIndex = Math.min(frames.length - 1, Math.max(0, currentIndex + wheelDirection));
-      if (nextIndex === currentIndex) return;
-      wheelInputReady = false;
-      goToFrame(nextIndex, wheelDirection, wheelVelocity);
-    }, { passive: false });
+      wheelInputReady = true;
+    }, { passive: true });
 
     window.addEventListener("keydown", (event) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
@@ -912,6 +1106,15 @@
       const down = event.key === "ArrowDown" || event.key === "PageDown" || (event.key === " " && !event.shiftKey);
       const up = event.key === "ArrowUp" || event.key === "PageUp" || (event.key === " " && event.shiftKey);
       if (!down && !up) return;
+      const stackBounds = stackScrollBounds();
+      if (!reduceMotion && stackBounds && isInsideStackScroll(3)) {
+        const canMoveInside = (down && window.scrollY < stackBounds.end - 2) || (up && window.scrollY > stackBounds.start + 2);
+        if (canMoveInside) {
+          event.preventDefault();
+          setScrollPosition(window.scrollY + (down ? 1 : -1) * window.innerHeight * .16, false);
+          return;
+        }
+      }
       event.preventDefault();
       if (frameWheelLocked) return;
       const currentIndex = nearestFrameIndex();
@@ -921,15 +1124,12 @@
     });
 
     window.addEventListener("scrollend", () => {
-      if (!frameWheelLocked) {
-        alignFrame(nearestFrameIndex());
-        queueSceneSync();
-      }
+      if (!frameWheelLocked) queueSceneSync();
     }, { passive: true });
 
     window.addEventListener("resize", () => {
       if (!frameWheelLocked) {
-        alignFrame(nearestFrameIndex());
+        if (stackScrollTrigger) stackScrollTrigger.refresh();
         queueSceneSync();
       }
     }, { passive: true });
