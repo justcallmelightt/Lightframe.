@@ -29,9 +29,11 @@
         let pitch = 8;
         let visible = false;
         let blinkTimer = 0;
+        let pulses = [];
         const noise = (x, y) => {
-          const value = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
-          return value - Math.floor(value);
+          let hash = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
+          hash = Math.imul(hash ^ (hash >>> 13), 1274126177);
+          return ((hash ^ (hash >>> 16)) >>> 0) / 4294967295;
         };
         const fieldNoise = (x, y) => {
           const left = Math.floor(x);
@@ -52,12 +54,12 @@
           for (let row = 0; row < rows; row += 1) {
             for (let column = 0; column < columns; column += 1) {
               const grain = noise(column, row);
-              const cloud = fieldNoise(column * .045, row * .045) * .48
-                + fieldNoise(column * .14 + 17, row * .14 + 29) * .32
-                + grain * .2;
-              const light = Math.max(0, Math.min(1, (cloud - .32) * 2.3));
-              if (light < .17) continue;
-              const tone = Math.round(22 + Math.pow(light, .55) * 233);
+              const cloud = fieldNoise(column * .037 + 11, row * .061 + 3) * .5
+                + fieldNoise(column * .113 + 42, row * .097 + 19) * .26
+                + grain * .24;
+              const light = Math.max(0, Math.min(1, (cloud - .45) * 2.6));
+              if (light < .25 || grain < .12) continue;
+              const tone = Math.round(26 + Math.pow(light, .8) * 205);
               baseContext.fillStyle = `rgb(${tone},${tone},${tone})`;
               baseContext.fillRect(column * pitch, row * pitch, size, size);
             }
@@ -71,19 +73,32 @@
           contactSquares.height = base.height = Math.max(1, Math.ceil(rect.height));
           columns = Math.ceil(base.width / pitch);
           rows = Math.ceil(base.height / pitch);
+          const pulseCount = Math.min(180, Math.max(40, Math.round(columns * rows * .003)));
+          pulses = Array.from({ length: pulseCount }, () => ({
+            column: Math.floor(Math.random() * columns),
+            row: Math.floor(Math.random() * rows),
+            phase: Math.random() * Math.PI * 2,
+            speed: .00032 + Math.random() * .00045,
+            strength: .1 + Math.random() * .18
+          }));
           drawBase();
         };
         const blink = () => {
           context.drawImage(base, 0, 0);
           const size = pitch - 1.5;
-          const changes = Math.min(560, Math.round(columns * rows * .012));
-          for (let index = 0; index < changes; index += 1) {
-            const column = Math.floor(Math.random() * columns);
-            const row = Math.floor(Math.random() * rows);
-            const tone = Math.random() < .38 ? 8 : 170 + Math.floor(Math.random() * 86);
-            context.fillStyle = `rgb(${tone},${tone},${tone})`;
-            context.fillRect(column * pitch, row * pitch, size, size);
-          }
+          const time = performance.now();
+          pulses.forEach((pulse) => {
+            const wave = (Math.sin(time * pulse.speed + pulse.phase) + 1) * .5;
+            const alpha = Math.pow(wave, 3) * pulse.strength;
+            if (alpha > .025) {
+              context.fillStyle = `rgba(255,255,255,${alpha})`;
+              context.fillRect(pulse.column * pitch, pulse.row * pitch, size, size);
+            }
+            if (wave < .03 && Math.random() < .025) {
+              pulse.column = Math.floor(Math.random() * columns);
+              pulse.row = Math.floor(Math.random() * rows);
+            }
+          });
         };
         const syncBlink = () => {
           clearInterval(blinkTimer);
@@ -203,7 +218,13 @@
     });
 
     const flowTracks = [...document.querySelectorAll("[data-flow-track]")];
-    flowTracks.forEach((track) => {
+    const stackPalette = [
+      ["#18f000", "#111"], ["#00c987", "#111"], ["#00bfaf", "#111"],
+      ["#009cf5", "#111"], ["#1746e8", "#fff"], ["#8100ff", "#fff"],
+      ["#a884ff", "#111"], ["#f50096", "#fff"], ["#e934f7", "#111"],
+      ["#ffc400", "#111"], ["#ff742a", "#111"]
+    ];
+    flowTracks.forEach((track, laneIndex) => {
       const source = track.innerHTML;
       const sourceCount = track.children.length;
       let segmentCopies = 1;
@@ -215,8 +236,33 @@
 
       const loopSegment = track.innerHTML;
       track.insertAdjacentHTML("beforeend", loopSegment);
+      let colorSeed = (0x9e3779b9 ^ Math.imul(laneIndex + 1, 0x85ebca6b)) >>> 0;
+      const nextColorRandom = () => {
+        colorSeed ^= colorSeed << 13;
+        colorSeed ^= colorSeed >>> 17;
+        colorSeed ^= colorSeed << 5;
+        return (colorSeed >>> 0) / 4294967296;
+      };
+      const colorCounts = stackPalette.map(() => 0);
+      let lastColor = -1;
+      let priorColor = -1;
       [...track.children].forEach((pill, index) => {
         if (index >= sourceCount) pill.setAttribute("aria-hidden", "true");
+        if (pill.textContent.trim() === "Lightframe.") {
+          pill.style.setProperty("--tile-color", "#111111");
+          pill.style.setProperty("--tile-ink", "#ffffff");
+          return;
+        }
+        const candidates = stackPalette.map((_, colorIndex) => colorIndex)
+          .filter((colorIndex) => colorIndex !== lastColor && colorIndex !== priorColor);
+        const fewest = Math.min(...candidates.map((colorIndex) => colorCounts[colorIndex]));
+        const balanced = candidates.filter((colorIndex) => colorCounts[colorIndex] <= fewest + 1);
+        const colorIndex = balanced[Math.floor(nextColorRandom() * balanced.length)];
+        pill.style.setProperty("--tile-color", stackPalette[colorIndex][0]);
+        pill.style.setProperty("--tile-ink", stackPalette[colorIndex][1]);
+        colorCounts[colorIndex] += 1;
+        priorColor = lastColor;
+        lastColor = colorIndex;
       });
     });
 
@@ -287,61 +333,66 @@
         finishIntro();
         return;
       }
-      let hasVisited = false;
       try {
-        hasVisited = sessionStorage.getItem("lightframe-intro-seen") === "1";
         sessionStorage.setItem("lightframe-intro-seen", "1");
       } catch (_) {}
 
       intro.insertAdjacentHTML("afterbegin", `
         <div class="intro-spectrum" aria-hidden="true"></div>
-        <div class="intro-grid" aria-hidden="true"></div>
-        <div class="intro-particles" aria-hidden="true">${Array.from({ length: 14 }, (_, index) => `<i style="--particle:${index}"></i>`).join("")}</div>
+        <div class="intro-white" aria-hidden="true"></div>
         <div class="intro-code" aria-hidden="true"><span>const message =</span><strong>“일상의 문제를 웹으로 정리합니다”;</strong></div>
         <div class="intro-meter" aria-hidden="true"><i></i></div>
       `);
+      const blackHold = 1;
+      const blackFade = 1.2;
+      const fadeShift = blackFade - .55;
 
       if (!gsapEngine) {
-        const fallbackLockup = intro.querySelector(".intro-lockup");
-        if (fallbackLockup) fallbackLockup.style.opacity = "1";
-        intro.querySelectorAll(".intro-code > *").forEach((line) => {
-          line.style.opacity = "1";
-          line.style.transform = "none";
-        });
+        const spectrum = intro.querySelector(".intro-spectrum");
+        const white = intro.querySelector(".intro-white");
+        const meter = intro.querySelector(".intro-meter");
+        const lockup = intro.querySelector(".intro-lockup");
+        const codeLines = [...intro.querySelectorAll(".intro-code > *")];
+        spectrum.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: blackFade * 1000, delay: blackHold * 1000, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" }
+        );
+        spectrum.animate(
+          [{ transform: "translateX(0)" }, { transform: "translateX(-75%)" }],
+          { duration: 2400, delay: (blackHold + blackFade) * 1000, easing: "linear", fill: "forwards" }
+        );
         window.setTimeout(() => {
-          body.classList.add("ready");
-          intro.animate(
-            [{ opacity: 1, transform: "translate3d(0,0,0)" }, { opacity: 0, transform: "translate3d(0,-5%,0)" }],
-            { duration: hasVisited ? 320 : 650, easing: "cubic-bezier(.16,1,.3,1)", fill: "forwards" }
-          ).finished.then(finishIntro).catch(finishIntro);
-        }, hasVisited ? 420 : 1250);
+          white.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, fill: "forwards" }).finished.then(() => {
+            meter.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 460, fill: "forwards" });
+            meter.querySelector("i").animate(
+              [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }],
+              { duration: 900, easing: "cubic-bezier(.45,0,.2,1)", fill: "forwards" }
+            );
+            lockup.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 460, fill: "forwards" });
+            codeLines.forEach((line, index) => line.animate(
+              [{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }],
+              { duration: 420, delay: index * 90, fill: "forwards" }
+            ));
+            window.setTimeout(() => {
+              meter.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
+              intro.animate([{ transform: "translateY(0)" }, { transform: "translateY(-100%)" }], { duration: 720, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards" })
+                .finished.then(finishIntro).catch(finishIntro);
+            }, 1160);
+          }).catch(finishIntro);
+        }, (blackHold + fadeShift) * 1000 + 2830);
         return;
       }
 
-      const durationScale = hasVisited ? .4 : 1;
-      const particles = intro.querySelectorAll(".intro-particles i");
-      gsapEngine.set(particles, {
-        x: (index) => Math.cos(index / particles.length * Math.PI * 2) * (hasVisited ? 100 : 260),
-        y: (index) => Math.sin(index / particles.length * Math.PI * 2) * (hasVisited ? 70 : 190),
-        scale: 0,
-        opacity: 0
-      });
       gsapEngine.timeline({ onComplete: finishIntro })
-        .fromTo(".intro-spectrum", { scaleX: .035, scaleY: .18, opacity: .68 }, { scaleX: 1.08, scaleY: 1, opacity: 1, duration: .85 * durationScale, ease: "expo.out" })
-        .to(particles, { scale: 1, opacity: .9, x: 0, y: 0, duration: .68 * durationScale, stagger: .018 * durationScale, ease: "power4.in" }, 0)
-        .to(particles, {
-          x: (index) => Math.cos(index / particles.length * Math.PI * 2) * (hasVisited ? 170 : 560),
-          y: (index) => Math.sin(index / particles.length * Math.PI * 2) * (hasVisited ? 100 : 330),
-          scale: 0,
-          opacity: 0,
-          duration: .72 * durationScale,
-          ease: "expo.out"
-        }, .52 * durationScale)
-        .fromTo(".intro-lockup", { opacity: 0, scale: .82 }, { opacity: 1, scale: 1, duration: .72 * durationScale, ease: "expo.out" }, .42 * durationScale)
-        .fromTo(".intro-code > *", { opacity: 0, yPercent: 110, rotateX: -35 }, { opacity: 1, yPercent: 0, rotateX: 0, duration: .58 * durationScale, stagger: .08 * durationScale, ease: "power4.out" }, .72 * durationScale)
-        .fromTo(".intro-meter i", { scaleX: 0 }, { scaleX: 1, duration: .9 * durationScale, ease: "power2.inOut" }, .68 * durationScale)
-        .to(".intro-lockup,.intro-code", { opacity: 0, y: -18, duration: .34 * durationScale, ease: "power3.in" }, hasVisited ? .46 : 1.82)
-        .to(intro, { yPercent: -100, duration: .62 * durationScale, ease: "expo.inOut" }, ">-.03");
+        .fromTo(".intro-spectrum", { opacity: 0 }, { opacity: 1, duration: blackFade, ease: "sine.inOut" }, blackHold)
+        .fromTo(".intro-spectrum", { xPercent: 0 }, { xPercent: -75, duration: 2.4, ease: "none" }, blackHold + blackFade)
+        .to(".intro-white", { opacity: 1, duration: .36, ease: "power2.inOut" }, blackHold + fadeShift + 2.83)
+        .fromTo(".intro-lockup", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .46, ease: "power2.out" }, blackHold + fadeShift + 3.2)
+        .fromTo(".intro-meter", { opacity: 0 }, { opacity: 1, duration: .46, ease: "power2.out" }, blackHold + fadeShift + 3.2)
+        .fromTo(".intro-meter i", { scaleX: 0 }, { scaleX: 1, duration: .9, ease: "power2.inOut" }, blackHold + fadeShift + 3.2)
+        .fromTo(".intro-code > *", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .42, stagger: .09, ease: "power2.out" }, blackHold + fadeShift + 3.3)
+        .to(".intro-meter", { opacity: 0, duration: .18 }, blackHold + fadeShift + 4.2)
+        .to(intro, { yPercent: -100, duration: .72, ease: "expo.inOut" }, blackHold + fadeShift + 4.35);
     };
 
     playIntro();
