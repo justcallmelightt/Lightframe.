@@ -15,7 +15,6 @@
     const scrollTriggerEngine = window.ScrollTrigger;
     const LenisEngine = window.Lenis;
     let motionSuspended = false;
-    let programmaticFrameJumpUntil = 0;
 
     const contact = document.querySelector(".contact");
     const contactSquares = contact?.querySelector(".contact-squares");
@@ -28,7 +27,8 @@
         let rows = 0;
         let pitch = 8;
         let visible = false;
-        let blinkTimer = 0;
+        let blinkFrame = 0;
+        let lastBlinkFrame = 0;
         let pulses = [];
         const noise = (x, y) => {
           let hash = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
@@ -57,9 +57,8 @@
               const cloud = fieldNoise(column * .037 + 11, row * .061 + 3) * .5
                 + fieldNoise(column * .113 + 42, row * .097 + 19) * .26
                 + grain * .24;
-              const light = Math.max(0, Math.min(1, (cloud - .45) * 2.6));
-              if (light < .25 || grain < .12) continue;
-              const tone = Math.round(26 + Math.pow(light, .8) * 205);
+              const light = Math.max(0, Math.min(1, (cloud - .43) * 2.5));
+              const tone = Math.round(15 + Math.pow(light, 1.25) * 105 + grain * 12);
               baseContext.fillStyle = `rgb(${tone},${tone},${tone})`;
               baseContext.fillRect(column * pitch, row * pitch, size, size);
             }
@@ -73,37 +72,45 @@
           contactSquares.height = base.height = Math.max(1, Math.ceil(rect.height));
           columns = Math.ceil(base.width / pitch);
           rows = Math.ceil(base.height / pitch);
-          const pulseCount = Math.min(180, Math.max(40, Math.round(columns * rows * .003)));
+          const pulseCount = Math.min(2200, Math.max(180, Math.round(columns * rows * .08)));
+          const now = performance.now();
           pulses = Array.from({ length: pulseCount }, () => ({
             column: Math.floor(Math.random() * columns),
             row: Math.floor(Math.random() * rows),
-            phase: Math.random() * Math.PI * 2,
-            speed: .00032 + Math.random() * .00045,
-            strength: .1 + Math.random() * .18
+            start: now - Math.random() * 1100,
+            duration: 300 + Math.random() * 1000,
+            brightness: .58 + Math.random() * .42
           }));
           drawBase();
         };
-        const blink = () => {
+        const blink = (time) => {
+          if (!visible || document.hidden || reduceMotion) return;
+          blinkFrame = window.requestAnimationFrame(blink);
+          if (time - lastBlinkFrame < 32) return;
+          lastBlinkFrame = time;
           context.drawImage(base, 0, 0);
           const size = pitch - 1.5;
-          const time = performance.now();
           pulses.forEach((pulse) => {
-            const wave = (Math.sin(time * pulse.speed + pulse.phase) + 1) * .5;
-            const alpha = Math.pow(wave, 3) * pulse.strength;
-            if (alpha > .025) {
-              context.fillStyle = `rgba(255,255,255,${alpha})`;
-              context.fillRect(pulse.column * pitch, pulse.row * pitch, size, size);
-            }
-            if (wave < .03 && Math.random() < .025) {
+            const progress = (time - pulse.start) / pulse.duration;
+            if (progress >= 1) {
               pulse.column = Math.floor(Math.random() * columns);
               pulse.row = Math.floor(Math.random() * rows);
+              pulse.start = time + Math.random() * 650;
+              pulse.duration = 300 + Math.random() * 1000;
+              pulse.brightness = .58 + Math.random() * .42;
+              return;
+            }
+            if (progress > 0) {
+              const alpha = Math.pow(Math.sin(progress * Math.PI), .7) * pulse.brightness;
+              context.fillStyle = `rgba(255,255,255,${alpha})`;
+              context.fillRect(pulse.column * pitch, pulse.row * pitch, size, size);
             }
           });
         };
         const syncBlink = () => {
-          clearInterval(blinkTimer);
-          blinkTimer = 0;
-          if (visible && !document.hidden && !reduceMotion) blinkTimer = window.setInterval(blink, 110);
+          window.cancelAnimationFrame(blinkFrame);
+          blinkFrame = 0;
+          if (visible && !document.hidden && !reduceMotion) blinkFrame = window.requestAnimationFrame(blink);
           else context.drawImage(base, 0, 0);
         };
         const observer = new IntersectionObserver(([entry]) => {
@@ -219,11 +226,27 @@
 
     const flowTracks = [...document.querySelectorAll("[data-flow-track]")];
     const stackPalette = [
-      ["#18f000", "#111"], ["#00c987", "#111"], ["#00bfaf", "#111"],
-      ["#009cf5", "#111"], ["#1746e8", "#fff"], ["#8100ff", "#fff"],
-      ["#a884ff", "#111"], ["#f50096", "#fff"], ["#e934f7", "#111"],
-      ["#ffc400", "#111"], ["#ff742a", "#111"]
+      ["#18f000", "#111", "green"], ["#a5f000", "#111", "green"],
+      ["#00c987", "#111", "green"], ["#00bfaf", "#111", "cyan"],
+      ["#22d8eb", "#111", "cyan"], ["#13b5ff", "#111", "cyan"],
+      ["#006ef5", "#fff", "blue"], ["#1746e8", "#fff", "blue"],
+      ["#8100ff", "#fff", "violet"], ["#a884ff", "#111", "violet"],
+      ["#e934f7", "#111", "pink"], ["#f50096", "#fff", "pink"],
+      ["#ff638b", "#111", "pink"], ["#ff5a55", "#111", "warm"],
+      ["#ff742a", "#111", "warm"], ["#ff9b24", "#111", "warm"],
+      ["#ffc400", "#111", "yellow"], ["#ffe45c", "#111", "yellow"]
     ];
+    const colorCounts = stackPalette.map(() => 0);
+    const familyCounts = new Map();
+    const laneColorZones = [];
+    const familyOrder = ["green", "cyan", "blue", "violet", "pink", "warm", "yellow"];
+    const familyDistance = (a, b) => {
+      const first = familyOrder.indexOf(a);
+      const second = familyOrder.indexOf(b);
+      if (first < 0 || second < 0) return 3;
+      const distance = Math.abs(first - second);
+      return Math.min(distance, familyOrder.length - distance);
+    };
     flowTracks.forEach((track, laneIndex) => {
       const source = track.innerHTML;
       const sourceCount = track.children.length;
@@ -235,6 +258,7 @@
       }
 
       const loopSegment = track.innerHTML;
+      const loopLength = track.children.length;
       track.insertAdjacentHTML("beforeend", loopSegment);
       let colorSeed = (0x9e3779b9 ^ Math.imul(laneIndex + 1, 0x85ebca6b)) >>> 0;
       const nextColorRandom = () => {
@@ -243,27 +267,55 @@
         colorSeed ^= colorSeed << 5;
         return (colorSeed >>> 0) / 4294967296;
       };
-      const colorCounts = stackPalette.map(() => 0);
-      let lastColor = -1;
-      let priorColor = -1;
+      const assignments = [];
+      const currentZones = [];
+      let lastFamily = "";
+      let priorFamily = "";
       [...track.children].forEach((pill, index) => {
         if (index >= sourceCount) pill.setAttribute("aria-hidden", "true");
-        if (pill.textContent.trim() === "Lightframe.") {
-          pill.style.setProperty("--tile-color", "#111111");
-          pill.style.setProperty("--tile-ink", "#ffffff");
+        if (index >= loopLength) {
+          const [color, ink] = assignments[index - loopLength];
+          pill.style.setProperty("--tile-color", color);
+          pill.style.setProperty("--tile-ink", ink);
           return;
         }
-        const candidates = stackPalette.map((_, colorIndex) => colorIndex)
-          .filter((colorIndex) => colorIndex !== lastColor && colorIndex !== priorColor);
-        const fewest = Math.min(...candidates.map((colorIndex) => colorCounts[colorIndex]));
-        const balanced = candidates.filter((colorIndex) => colorCounts[colorIndex] <= fewest + 1);
-        const colorIndex = balanced[Math.floor(nextColorRandom() * balanced.length)];
-        pill.style.setProperty("--tile-color", stackPalette[colorIndex][0]);
-        pill.style.setProperty("--tile-ink", stackPalette[colorIndex][1]);
-        colorCounts[colorIndex] += 1;
-        priorColor = lastColor;
-        lastColor = colorIndex;
+        const start = pill.offsetLeft;
+        const end = start + pill.offsetWidth;
+        const nearbyFamilies = (laneColorZones[laneIndex - 1] || [])
+          .filter((zone) => zone.end > start - 24 && zone.start < end + 24)
+          .map((zone) => zone.family);
+        let selection;
+        if (pill.textContent.trim() === "Lightframe.") {
+          selection = ["#111111", "#ffffff", "black"];
+        } else {
+          const ranked = stackPalette.map((entry, colorIndex) => ({
+            entry,
+            colorIndex,
+            score: colorCounts[colorIndex] * 1.3
+              + (familyCounts.get(entry[2]) || 0) * .12
+              + (familyDistance(entry[2], lastFamily) === 0 ? 18 : 0)
+              + (familyDistance(entry[2], lastFamily) === 1 ? 8 : 0)
+              + (familyDistance(entry[2], priorFamily) === 0 ? 6 : 0)
+              + nearbyFamilies.reduce((penalty, family) => penalty +
+                (familyDistance(entry[2], family) === 0 ? 13 :
+                  familyDistance(entry[2], family) === 1 ? 5 : 0), 0)
+              + nextColorRandom() * 1.2
+          }));
+          ranked.sort((a, b) => a.score - b.score);
+          const { entry, colorIndex } = ranked[0];
+          selection = entry;
+          colorCounts[colorIndex] += 1;
+          familyCounts.set(entry[2], (familyCounts.get(entry[2]) || 0) + 1);
+        }
+        const [color, ink, family] = selection;
+        pill.style.setProperty("--tile-color", color);
+        pill.style.setProperty("--tile-ink", ink);
+        assignments.push(selection);
+        currentZones.push({ start, end, family });
+        priorFamily = lastFamily;
+        lastFamily = family;
       });
+      laneColorZones.push(currentZones);
     });
 
     const boostTechnology = () => {
@@ -319,11 +371,11 @@
       requestAnimationFrame(() => {
         document.documentElement.classList.remove("motion-booting");
         intro?.remove();
-        smoothScroll?.start();
         scrollTriggerEngine?.refresh();
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         const hashFrameIndex = frames.indexOf(hashTarget);
         if (hashFrameIndex >= 0) alignFrame(hashFrameIndex);
+        smoothScroll?.start();
         syncSceneFromViewport(true);
       });
     };
@@ -749,8 +801,6 @@
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         if (!hashTarget) return;
         const targetTop = hashTarget === flowStage ? stackScrollTrigger.start : hashTarget.offsetTop;
-        programmaticFrameJumpUntil = performance.now() + 700;
-        lastObservedScrollY = targetTop;
         setScrollPosition(targetTop);
         if (hashTarget === flowStage) renderStackProgress(0);
       });
@@ -758,13 +808,11 @@
       requestAnimationFrame(() => {
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         if (hashTarget === flowStage) {
-          programmaticFrameJumpUntil = performance.now() + 700;
           setScrollPosition(flowStage.offsetTop);
           renderStackProgress(0);
           return;
         }
         if (hashTarget?.classList.contains("frame")) {
-          programmaticFrameJumpUntil = performance.now() + 700;
           setScrollPosition(hashTarget.offsetTop);
         }
         renderStackProgress();
@@ -1154,44 +1202,6 @@
     };
 
     let sceneSyncRaf = 0;
-    let lastObservedScrollY = window.scrollY;
-    let stackTraversalGuard = false;
-    const guardStackTraversal = () => {
-      if (performance.now() < programmaticFrameJumpUntil) {
-        lastObservedScrollY = window.scrollY;
-        return false;
-      }
-      if (stackTraversalGuard || reduceMotion) {
-        lastObservedScrollY = window.scrollY;
-        return false;
-      }
-      const bounds = stackScrollBounds();
-      if (!bounds) {
-        lastObservedScrollY = window.scrollY;
-        return false;
-      }
-      const currentY = window.scrollY;
-      let guardedY = null;
-      if (lastObservedScrollY < bounds.start - 2 && currentY > bounds.end + 2) {
-        guardedY = bounds.start;
-      } else if (lastObservedScrollY > bounds.end + 2 && currentY < bounds.start - 2) {
-        guardedY = bounds.end;
-      } else if (lastObservedScrollY >= bounds.start - 2 && lastObservedScrollY < bounds.end - 2 && currentY > bounds.end + 2) {
-        guardedY = Math.min(bounds.end - 2, lastObservedScrollY + window.innerHeight * .34);
-      } else if (lastObservedScrollY <= bounds.end + 2 && lastObservedScrollY > bounds.start + 2 && currentY < bounds.start - 2) {
-        guardedY = Math.max(bounds.start + 2, lastObservedScrollY - window.innerHeight * .34);
-      }
-      if (guardedY === null) {
-        lastObservedScrollY = currentY;
-        return false;
-      }
-      stackTraversalGuard = true;
-      lastObservedScrollY = guardedY;
-      setScrollPosition(guardedY);
-      renderStackProgress();
-      requestAnimationFrame(() => { stackTraversalGuard = false; });
-      return true;
-    };
     const queueSceneSync = () => {
       if (sceneSyncRaf || frameWheelLocked) return;
       sceneSyncRaf = requestAnimationFrame(() => {
@@ -1199,42 +1209,19 @@
         if (!frameWheelLocked) syncSceneFromViewport();
       });
     };
-    window.addEventListener("scroll", () => {
-      if (!guardStackTraversal()) queueSceneSync();
-    }, { passive: true });
+    window.addEventListener("scroll", queueSceneSync, { passive: true });
 
     const alignFrame = (index) => {
       const frame = frames[index];
       if (!frame) return;
       const top = frame === flowStage && stackScrollTrigger ? stackScrollTrigger.start : frame.offsetTop;
-      programmaticFrameJumpUntil = performance.now() + 700;
-      lastObservedScrollY = top;
       setScrollPosition(top);
-    };
-
-    let wheelAccumulator = 0;
-    let wheelInputReady = true;
-    let lastWheelAt = 0;
-    let wheelReleaseToken = 0;
-    const releaseWheelInput = () => {
-      const token = ++wheelReleaseToken;
-      const startedAt = performance.now();
-      const waitForRest = () => {
-        if (token !== wheelReleaseToken) return;
-        const now = performance.now();
-        if (now - lastWheelAt >= 160 || now - startedAt >= 600) {
-          wheelAccumulator = 0;
-          wheelInputReady = true;
-          return;
-        }
-        requestAnimationFrame(waitForRest);
-      };
-      requestAnimationFrame(waitForRest);
     };
 
     const goToFrame = (targetIndex, direction, gestureVelocity = 0) => {
       const target = frames[targetIndex];
       if (!target) return;
+      smoothScroll?.stop();
       stopAmbientFrameFlash();
       frameTransitionToken += 1;
       const token = frameTransitionToken;
@@ -1243,7 +1230,7 @@
         alignFrame(targetIndex);
         activateFrameScene(targetIndex, direction, true);
         if (target === accentFrame) revealAboutAccent();
-        if (!wheelInputReady) releaseWheelInput();
+        smoothScroll?.start();
         return;
       }
 
@@ -1315,8 +1302,8 @@
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
+        smoothScroll?.start();
         if (target === accentFrame) revealAboutAccent();
-        if (!wheelInputReady) releaseWheelInput();
       };
       requestAnimationFrame(renderTransition);
     };
@@ -1334,79 +1321,10 @@
       });
     });
 
-    // Keep wheel scrolling native. ScrollTrigger uses the browser scroll position as
-    // its single source of truth, so Chrome trackpad momentum remains reversible and
-    // cannot be misread as a request to skip directly to the next full-screen frame.
-    window.addEventListener("wheel", () => {
-      lastWheelAt = performance.now();
-      wheelAccumulator = 0;
-      wheelInputReady = true;
-    }, { passive: true });
-
-    window.addEventListener("keydown", (event) => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) return;
-      const down = event.key === "ArrowDown" || event.key === "PageDown" || (event.key === " " && !event.shiftKey);
-      const up = event.key === "ArrowUp" || event.key === "PageUp" || (event.key === " " && event.shiftKey);
-      if (!down && !up) return;
-      const stackBounds = stackScrollBounds();
-      if (!reduceMotion && stackBounds && isInsideStackScroll(3)) {
-        const canMoveInside = (down && window.scrollY < stackBounds.end - 2) || (up && window.scrollY > stackBounds.start + 2);
-        if (canMoveInside) {
-          event.preventDefault();
-          setScrollPosition(window.scrollY + (down ? 1 : -1) * window.innerHeight * .16, false);
-          return;
-        }
-      }
-      event.preventDefault();
-      if (frameWheelLocked) return;
-      const currentIndex = nearestFrameIndex();
-      const direction = down ? 1 : -1;
-      const nextIndex = Math.min(frames.length - 1, Math.max(0, currentIndex + direction));
-      if (nextIndex !== currentIndex) goToFrame(nextIndex, direction, 0);
-    });
-
-    // Settle ordinary full-screen scenes on their exact top edge only after
-    // input has stopped. The long, scrubbed technology scene remains free to
-    // track every pixel of the user's scroll in either direction.
-    let frameSnapTimer = 0;
-    let touchScrolling = false;
-    const settleFrame = () => {
-      frameSnapTimer = 0;
-      if (frameWheelLocked || motionSuspended || touchScrolling || performance.now() < programmaticFrameJumpUntil) return;
-      if (performance.now() - lastWheelAt < 180) {
-        frameSnapTimer = window.setTimeout(settleFrame, 180);
-        return;
-      }
-      const bounds = stackScrollBounds();
-      if (bounds && window.scrollY > bounds.start + 2 && window.scrollY < bounds.end - 2) return;
-      const index = nearestFrameIndex();
-      const frame = frames[index];
-      if (!frame || frame === flowStage) return;
-      const distance = Math.abs(frame.offsetTop - window.scrollY);
-      if (distance < 2 || distance > window.innerHeight * .48) return;
-      programmaticFrameJumpUntil = performance.now() + 350;
-      lastObservedScrollY = frame.offsetTop;
-      setScrollPosition(frame.offsetTop);
-      queueSceneSync();
-    };
-    const queueFrameSnap = (delay = 220) => {
-      clearTimeout(frameSnapTimer);
-      frameSnapTimer = window.setTimeout(settleFrame, delay);
-    };
-    window.addEventListener("scroll", () => queueFrameSnap(), { passive: true });
-    window.addEventListener("scrollend", () => {
-      if (!frameWheelLocked) queueSceneSync();
-      queueFrameSnap(90);
-    }, { passive: true });
-    window.addEventListener("touchstart", () => {
-      touchScrolling = true;
-      clearTimeout(frameSnapTimer);
-    }, { passive: true });
-    window.addEventListener("touchend", () => {
-      touchScrolling = false;
-      queueFrameSnap();
-    }, { passive: true });
+    // Wheel, trackpad, keyboard and touch retain their native continuous scroll.
+    // Section entrances still follow the viewport, while the pinned stack keeps
+    // its own reversible ScrollTrigger progress.
+    window.addEventListener("scrollend", queueSceneSync, { passive: true });
 
     window.addEventListener("resize", () => {
       if (!frameWheelLocked) {

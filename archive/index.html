@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Lightframe.의 아이덴티티, 인터페이스, 시각 실험을 모은 작업 아카이브." />
+  <meta name="description" content="Lightframe.의 시각 작업과 실제로 공개한 서비스를 모은 아카이브." />
   <meta name="theme-color" content="#ffffff" />
   <title>Archive — Lightframe.</title>
   <link rel="preload" href="./fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin />
-  <link rel="stylesheet" href="./styles.css" />
-  <script src="./script.js" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=20261008-services" />
+  <script src="./script.js?v=20261008-services" defer></script>
 </head>
 <body>
   <main id="archive-main">
     <header class="header">
       <a href="../#works" class="brand pressable" aria-label="Lightframe 작업 섹션으로 돌아가기">← Lightframe.</a>
-      <span class="count">Archive / Selected works / 06</span>
+      <span class="count">Archive / 06 visual works + 06 services</span>
       <button class="mode pressable" type="button" aria-label="다크 모드로 전환" aria-pressed="false"><i aria-hidden="true"></i><span>Light</span></button>
     </header>
 
@@ -27,14 +27,25 @@
         <p class="coordinates" aria-hidden="true">37.5665° N<br />126.9780° E</p>
         <p class="hint">Scroll ↓</p>
         <div class="works">
-          <button class="work pressable lightframe" type="button" data-kind="Identity" data-site="../#hero" aria-label="Lightframe 자세히 보기"><span class="image"><img src="./works/lightframe.png" alt="색상 스펙트럼 위에 Frame 로고가 놓인 Lightframe 그래픽" fetchpriority="high" /></span><span class="label"><span>01</span><strong>Lightframe</strong><span>Identity</span></span></button>
-          <button class="work pressable tile" type="button" data-kind="Product" data-site="https://tile0.vercel.app/" aria-label="Tile 자세히 보기"><span class="image"><img src="./works/tile.png" alt="흰 배경 위 네 개의 검은 수직 막대로 구성된 Tile 심볼" fetchpriority="high" /></span><span class="label"><span>02</span><strong>Tile</strong><span>Product</span></span></button>
-          <button class="work pressable luxer" type="button" data-kind="Branding" aria-label="Luxer 자세히 보기"><span class="image"><img src="./works/luxer-symbol.png" alt="보라색 배경 위 흰색 마름모 형태의 Luxer 그래픽" loading="lazy" /></span><span class="label"><span>03</span><strong>Luxer</strong><span>Branding</span></span></button>
+          <button class="work pressable lightframe" type="button" data-kind="Identity · Web" data-site="https://lightframe0.vercel.app/" data-repo="https://github.com/justcallmelightt/Lightframe." aria-label="Lightframe 자세히 보기"><span class="image"><img src="./works/lightframe.png" alt="색상 스펙트럼 위에 Frame 로고가 놓인 Lightframe 그래픽" fetchpriority="high" /></span><span class="label"><span>01</span><strong>Lightframe</strong><span>Identity</span></span></button>
+          <button class="work pressable tile" type="button" data-kind="Product · Web" data-site="https://tile0.vercel.app/" data-repo="https://github.com/justcallmelightt/Tile" aria-label="Tile 자세히 보기"><span class="image"><img src="./works/tile.png" alt="흰 배경 위 네 개의 검은 수직 막대로 구성된 Tile 심볼" fetchpriority="high" /></span><span class="label"><span>02</span><strong>Tile</strong><span>Product</span></span></button>
+          <button class="work pressable luxer" type="button" data-kind="Branding · Planned" data-repo="https://github.com/justcallmelightt/Luxer" aria-label="Luxer 자세히 보기"><span class="image"><img src="./works/luxer-symbol.png" alt="보라색 배경 위 흰색 마름모 형태의 Luxer 그래픽" loading="lazy" /></span><span class="label"><span>03</span><strong>Luxer</strong><span>Branding</span></span></button>
           <button class="work pressable aura" type="button" data-kind="Identity" aria-label="Aura 자세히 보기"><span class="image"><img src="./works/aura.png" alt="분홍색과 보라색 배경 위 흰색 Aura 심볼" loading="lazy" /></span><span class="label"><span>04</span><strong>Aura</strong><span>Identity</span></span></button>
           <button class="work pressable yul" type="button" data-kind="Personal" aria-label="I'm Yul. 자세히 보기"><span class="image"><img src="./works/im-yul.png" alt="I'm Yul 문구를 세리프 타이포그래피로 구성한 그래픽" loading="lazy" /></span><span class="label"><span>05</span><strong>I'm Yul.</strong><span>Personal</span></span></button>
           <button class="work pressable stripes" type="button" data-kind="Editorial" aria-label="Stripes and Squares 자세히 보기"><span class="image"><img src="./works/stripes-squares.png" alt="검정과 흰색의 줄무늬 및 사각형을 다룬 편집 디자인" loading="lazy" /></span><span class="label"><span>06</span><strong>Stripes and Squares</strong><span>Editorial</span></span></button>
         </div>
         <div class="progress" aria-hidden="true"><i></i></div>
+      </div>
+    </section>
+    <section class="services" id="services" aria-labelledby="services-title">
+      <div class="services-heading"><p class="services-kicker">02 / LIVE SERVICES</p><h2 id="services-title">지금, 작동하는 것들.</h2><p>서비스를 선택하면 실제 화면과 공개 코드를 각각 열 수 있습니다.</p></div>
+      <div class="service-list">
+        <article class="service" style="--service-accent:#7936ff"><button class="service-toggle pressable" type="button" aria-expanded="false" aria-controls="service-light-intelligence"><span class="service-number">01 / AI</span><strong>Light Intelligence</strong><span class="service-arrow" aria-hidden="true">↗</span></button><div class="service-detail" id="service-light-intelligence"><div class="service-detail-inner"><p>나의 방식과 생각을 담아 만든 AI 챗봇.</p><div class="service-links"><a class="pressable" href="https://light-intelli.vercel.app/" target="_blank" rel="noopener noreferrer">서비스 열기 ↗</a><a class="pressable" href="https://github.com/justcallmelightt/Light-intelligence" target="_blank" rel="noopener noreferrer">GitHub 보기 ↗</a></div></div></div></article>
+        <article class="service" style="--service-accent:#3194e8"><button class="service-toggle pressable" type="button" aria-expanded="false" aria-controls="service-storyframe"><span class="service-number">02 / STORY</span><strong>Storyframe</strong><span class="service-arrow" aria-hidden="true">↗</span></button><div class="service-detail" id="service-storyframe"><div class="service-detail-inner"><p>공유하고 싶은 이야기를 웹에서 직접 구성하고 전달하는 서비스.</p><div class="service-links"><a class="pressable" href="https://storyframe0.vercel.app/" target="_blank" rel="noopener noreferrer">서비스 열기 ↗</a><a class="pressable" href="https://github.com/justcallmelightt/Storyframe" target="_blank" rel="noopener noreferrer">GitHub 보기 ↗</a></div></div></div></article>
+        <article class="service" style="--service-accent:#4f75d9"><button class="service-toggle pressable" type="button" aria-expanded="false" aria-controls="service-word-drawer"><span class="service-number">03 / WRITING</span><strong>문장서랍</strong><span class="service-arrow" aria-hidden="true">↗</span></button><div class="service-detail" id="service-word-drawer"><div class="service-detail-inner"><p>나의 말을 기록하고 다시 읽는 개인 어록 웹앱.</p><div class="service-links"><a class="pressable" href="https://justcallmelightt.github.io/word-drawer/" target="_blank" rel="noopener noreferrer">서비스 열기 ↗</a><a class="pressable" href="https://github.com/justcallmelightt/word-drawer" target="_blank" rel="noopener noreferrer">GitHub 보기 ↗</a></div></div></div></article>
+        <article class="service" style="--service-accent:#f24883"><button class="service-toggle pressable" type="button" aria-expanded="false" aria-controls="service-cssletter"><span class="service-number">04 / LETTER</span><strong>CSSLetter</strong><span class="service-arrow" aria-hidden="true">↗</span></button><div class="service-detail" id="service-cssletter"><div class="service-detail-inner"><p>마음을 디자인해 링크로 전하는 온라인 편지.</p><div class="service-links"><a class="pressable" href="https://cssletter.vercel.app/" target="_blank" rel="noopener noreferrer">서비스 열기 ↗</a><a class="pressable" href="https://github.com/justcallmelightt/CSSLetter" target="_blank" rel="noopener noreferrer">GitHub 보기 ↗</a></div></div></div></article>
+        <article class="service" style="--service-accent:#00b894"><button class="service-toggle pressable" type="button" aria-expanded="false" aria-controls="service-tile"><span class="service-number">05 / SCHEDULE</span><strong>Tile</strong><span class="service-arrow" aria-hidden="true">↗</span></button><div class="service-detail" id="service-tile"><div class="service-detail-inner"><p>학교 일과와 시간표를 빠르게 확인하는 서비스.</p><div class="service-links"><a class="pressable" href="https://tile0.vercel.app/" target="_blank" rel="noopener noreferrer">서비스 열기 ↗</a><a class="pressable" href="https://github.com/justcallmelightt/Tile" target="_blank" rel="noopener noreferrer">GitHub 보기 ↗</a></div></div></div></article>
+        <article class="service" style="--service-accent:#f4bc36"><button class="service-toggle pressable" type="button" aria-expanded="false" aria-controls="service-lightframe"><span class="service-number">06 / IDENTITY</span><strong>Lightframe.</strong><span class="service-arrow" aria-hidden="true">↗</span></button><div class="service-detail" id="service-lightframe"><div class="service-detail-inner"><p>일상의 문제를 웹으로 정리하는 작업과 브랜드를 소개합니다.</p><div class="service-links"><a class="pressable" href="https://lightframe0.vercel.app/" target="_blank" rel="noopener noreferrer">서비스 열기 ↗</a><a class="pressable" href="https://github.com/justcallmelightt/Lightframe." target="_blank" rel="noopener noreferrer">GitHub 보기 ↗</a></div></div></div></article>
       </div>
     </section>
     <footer><span class="footer-spark" aria-hidden="true">✦</span><p>justcallmelight_</p><p>Design archive<br />Seoul, 2026</p></footer>
@@ -45,7 +56,7 @@
     <dialog class="sheet" aria-label="작품 상세">
       <div class="sheet-head"><span class="sheet-index"></span><button class="close pressable" type="button">Close</button></div>
       <div class="large-image"><img src="" alt="" /></div>
-      <div class="sheet-foot"><h2></h2><div class="sheet-actions"><p></p><a class="visit pressable" hidden>사이트 바로 가기 <span aria-hidden="true">↗</span></a></div></div>
+      <div class="sheet-foot"><h2></h2><div class="sheet-actions"><p></p><div class="sheet-links"><a class="visit pressable" hidden>서비스 열기 <span aria-hidden="true">↗</span></a><a class="repo-link pressable" hidden>GitHub 보기 <span aria-hidden="true">↗</span></a></div></div></div>
     </dialog>
   </div>
 </body>
