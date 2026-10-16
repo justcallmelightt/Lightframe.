@@ -286,7 +286,7 @@
           .map((zone) => zone.family);
         let selection;
         if (pill.textContent.trim() === "Lightframe.") {
-          selection = ["#111111", "#ffffff", "black"];
+          selection = ["var(--lightframe-gradient)", "#ffffff", "brand"];
         } else {
           const ranked = stackPalette.map((entry, colorIndex) => ({
             entry,
@@ -660,7 +660,10 @@
       let nearestIndex = 0;
       let nearestDistance = Infinity;
       frames.forEach((frame, index) => {
-        const distance = Math.abs(frame.offsetTop - window.scrollY);
+        const frameTop = frame === flowStage && stackScrollTrigger
+          ? stackScrollTrigger.start
+          : frame.getBoundingClientRect().top + window.scrollY;
+        const distance = Math.abs(frameTop - window.scrollY);
         if (distance >= nearestDistance) return;
         nearestDistance = distance;
         nearestIndex = index;
@@ -681,7 +684,7 @@
     };
     const tickGradientIdle = (time) => {
       gradientIdleRaf = 0;
-      if (document.hidden || !isInsideStackScroll() || flowStage.classList.contains("is-handoff-active")) {
+      if (document.hidden || !isInsideStackScroll()) {
         gradientIdleOffset = 0;
         gradientLastFrameAt = 0;
         paintGradientIdle();
@@ -743,11 +746,9 @@
       const visualProgress = .16 + value * .84;
       const assembled = value >= .7;
       const gradientProgress = Math.min(1, Math.max(0, (value - .04) / .91));
-      const handoffProgress = Math.min(1, Math.max(0, (value - .965) / .035));
       flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
       flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
       flowStage.style.setProperty("--stack-gradient-progress", gradientProgress.toFixed(4));
-      flowStage.style.setProperty("--stack-handoff", handoffProgress.toFixed(4));
       flowLanes.forEach((lane, index) => {
         const laneStart = .06 + index * .115;
         const linearProgress = Math.min(1, Math.max(0, (value - laneStart) / .18));
@@ -765,7 +766,6 @@
       });
       flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
       flowStage.classList.toggle("is-stack-assembled", assembled);
-      flowStage.classList.toggle("is-handoff-active", handoffProgress > 0);
       document.documentElement.classList.toggle("is-stack-scrubbing", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
       updateGradientIdle(value, isInsideStackScroll());
     };
@@ -786,7 +786,7 @@
       stackScrollTrigger = scrollTriggerEngine.create({
         trigger: flowStage,
         start: "top top",
-        end: () => `+=${Math.round(window.innerHeight * 8.4)}`,
+        end: () => `+=${Math.round(window.innerHeight * 2.6)}`,
         pin: flowStage,
         pinSpacing: true,
         anticipatePin: 1,
@@ -800,7 +800,9 @@
         scrollTriggerEngine.refresh();
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         if (!hashTarget) return;
-        const targetTop = hashTarget === flowStage ? stackScrollTrigger.start : hashTarget.offsetTop;
+        const targetTop = hashTarget === flowStage
+          ? stackScrollTrigger.start
+          : hashTarget.getBoundingClientRect().top + window.scrollY;
         setScrollPosition(targetTop);
         if (hashTarget === flowStage) renderStackProgress(0);
       });
@@ -808,12 +810,12 @@
       requestAnimationFrame(() => {
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         if (hashTarget === flowStage) {
-          setScrollPosition(flowStage.offsetTop);
+          setScrollPosition(flowStage.getBoundingClientRect().top + window.scrollY);
           renderStackProgress(0);
           return;
         }
         if (hashTarget?.classList.contains("frame")) {
-          setScrollPosition(hashTarget.offsetTop);
+          setScrollPosition(hashTarget.getBoundingClientRect().top + window.scrollY);
         }
         renderStackProgress();
       });
@@ -1214,7 +1216,9 @@
     const alignFrame = (index) => {
       const frame = frames[index];
       if (!frame) return;
-      const top = frame === flowStage && stackScrollTrigger ? stackScrollTrigger.start : frame.offsetTop;
+      const top = frame === flowStage && stackScrollTrigger
+        ? stackScrollTrigger.start
+        : frame.getBoundingClientRect().top + window.scrollY;
       setScrollPosition(top);
     };
 
@@ -1308,6 +1312,61 @@
       requestAnimationFrame(renderTransition);
     };
 
+    // Hold at the fully assembled stack until the current wheel/trackpad
+    // gesture has ended. A fresh gesture then becomes an intentional scene
+    // change instead of momentum leaking through the pinned section.
+    let stackHandoffLocked = false;
+    let stackHandoffArmed = false;
+    let stackHandoffTimer = 0;
+    const stackHandoffReleaseDelay = 300;
+    const armStackHandoffAfterRelease = () => {
+      clearTimeout(stackHandoffTimer);
+      stackHandoffTimer = window.setTimeout(() => {
+        stackHandoffArmed = true;
+      }, stackHandoffReleaseDelay);
+    };
+    const handleStackHandoffInput = (event, direction) => {
+      if (reduceMotion || !flowStage || !direction) return false;
+      // Do not let the tail of a trackpad gesture alter scroll position while
+      // the cover transition is aligning the destination frame.
+      if (frameWheelLocked) {
+        event.preventDefault();
+        return true;
+      }
+      const bounds = stackScrollBounds();
+      if (!bounds) return false;
+      const atCompletedStackEnd = window.scrollY >= bounds.end - 8
+        && Number(flowStage?.style.getPropertyValue("--stack-scroll") || 0) >= .995;
+
+      if (!stackHandoffLocked && !(direction > 0 && atCompletedStackEnd)) return false;
+      event.preventDefault();
+
+      if (!stackHandoffLocked) {
+        stackHandoffLocked = true;
+        stackHandoffArmed = false;
+        smoothScroll?.stop();
+        setScrollPosition(bounds.end, true);
+        queueStackProgress();
+        armStackHandoffAfterRelease();
+        return true;
+      }
+
+      if (!stackHandoffArmed) {
+        armStackHandoffAfterRelease();
+        return true;
+      }
+
+      clearTimeout(stackHandoffTimer);
+      stackHandoffLocked = false;
+      stackHandoffArmed = false;
+      const targetIndex = Math.min(frames.length - 1, Math.max(0, flowStageIndex + Math.sign(direction)));
+      if (targetIndex !== flowStageIndex) goToFrame(targetIndex, Math.sign(direction), event.deltaY || 0);
+      return true;
+    };
+    window.addEventListener("wheel", (event) => {
+      handleStackHandoffInput(event, event.deltaY);
+    }, { capture: true, passive: false });
+
     document.querySelectorAll('a[href^="#"]').forEach((link) => {
       link.addEventListener("click", (event) => {
         const target = document.querySelector(link.getAttribute("href"));
@@ -1321,9 +1380,37 @@
       });
     });
 
-    // Wheel, trackpad, keyboard and touch retain their native continuous scroll.
-    // Section entrances still follow the viewport, while the pinned stack keeps
-    // its own reversible ScrollTrigger progress.
+    // Snap ordinary full-screen frames after a gesture settles. The
+    // technology frame is intentionally excluded: its pinned scrub and
+    // completion handoff own that section's scroll behavior.
+    const snapFrames = frames.filter((frame) => frame !== flowStage);
+    let frameSnapTimer = 0;
+    const snapNearestEditorialFrame = () => {
+      frameSnapTimer = 0;
+      if (frameWheelLocked || body.classList.contains("is-transitioning") || isInsideStackScroll() || stackHandoffLocked) return;
+      let nearest = null;
+      let nearestTop = 0;
+      let nearestDistance = Infinity;
+      snapFrames.forEach((frame) => {
+        const top = frame.getBoundingClientRect().top + window.scrollY;
+        const distance = Math.abs(top - window.scrollY);
+        if (distance >= nearestDistance) return;
+        nearest = frame;
+        nearestTop = top;
+        nearestDistance = distance;
+      });
+      if (!nearest || nearestDistance < 3 || nearestDistance > window.innerHeight * .52) return;
+      setScrollPosition(nearestTop, false);
+    };
+    const queueEditorialFrameSnap = () => {
+      clearTimeout(frameSnapTimer);
+      frameSnapTimer = window.setTimeout(snapNearestEditorialFrame, 180);
+    };
+    window.addEventListener("scroll", queueEditorialFrameSnap, { passive: true });
+    window.addEventListener("scrollend", queueEditorialFrameSnap, { passive: true });
+
+    // Wheel, trackpad, keyboard and touch retain their native continuous scroll
+    // outside the editorial snaps and the completed stack handoff.
     window.addEventListener("scrollend", queueSceneSync, { passive: true });
 
     window.addEventListener("resize", () => {
