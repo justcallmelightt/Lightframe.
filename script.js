@@ -644,6 +644,8 @@
     const flowStageIndex = frames.indexOf(flowStage);
     let frameWheelLocked = false;
     let frameTransitionToken = 0;
+    let stackEndHolding = false;
+    let lastStackWheelAt = 0;
     let stackScrollTrigger = null;
     const stackScrollBounds = () => {
       if (!flowStage) return null;
@@ -1225,6 +1227,7 @@
     const goToFrame = (targetIndex, direction, gestureVelocity = 0) => {
       const target = frames[targetIndex];
       if (!target) return;
+      stackEndHolding = false;
       smoothScroll?.stop();
       stopAmbientFrameFlash();
       frameTransitionToken += 1;
@@ -1312,18 +1315,14 @@
       requestAnimationFrame(renderTransition);
     };
 
-    // Hold at the fully assembled stack until the current wheel/trackpad
-    // gesture has ended. A fresh gesture then becomes an intentional scene
-    // change instead of momentum leaking through the pinned section.
-    let stackHandoffLocked = false;
-    let stackHandoffArmed = false;
-    let stackHandoffTimer = 0;
+    // At the stack's actual end, absorb the tail of the current trackpad
+    // gesture. A discrete mouse wheel has no release event, so its next
+    // notch can advance even when the notches are less than 300ms apart.
     const stackHandoffReleaseDelay = 300;
-    const armStackHandoffAfterRelease = () => {
-      clearTimeout(stackHandoffTimer);
-      stackHandoffTimer = window.setTimeout(() => {
-        stackHandoffArmed = true;
-      }, stackHandoffReleaseDelay);
+    const isDiscreteWheelNotch = (event) => {
+      if (event.deltaMode !== 0) return true;
+      const wheelDelta = Math.abs(event.wheelDeltaY || 0);
+      return wheelDelta >= 120 && wheelDelta % 120 === 0;
     };
     const handleStackHandoffInput = (event, direction) => {
       if (reduceMotion || !flowStage || !direction) return false;
@@ -1335,32 +1334,28 @@
       }
       const bounds = stackScrollBounds();
       if (!bounds) return false;
-      const atCompletedStackEnd = window.scrollY >= bounds.end - 8
-        && Number(flowStage?.style.getPropertyValue("--stack-scroll") || 0) >= .995;
+      const now = performance.now();
+      const freshGesture = now - lastStackWheelAt > stackHandoffReleaseDelay;
+      const atCompletedStackEnd = Math.abs(window.scrollY - bounds.end) <= Math.max(8, window.innerHeight * .025);
 
-      if (!stackHandoffLocked && !(direction > 0 && atCompletedStackEnd)) return false;
+      if (!atCompletedStackEnd || direction < 0) {
+        if (stackEndHolding) smoothScroll?.start();
+        stackEndHolding = false;
+        if (window.scrollY >= bounds.start - 8 && window.scrollY <= bounds.end + 8) lastStackWheelAt = now;
+        return false;
+      }
+
       event.preventDefault();
-
-      if (!stackHandoffLocked) {
-        stackHandoffLocked = true;
-        stackHandoffArmed = false;
-        smoothScroll?.stop();
-        setScrollPosition(bounds.end, true);
-        queueStackProgress();
-        armStackHandoffAfterRelease();
+      lastStackWheelAt = now;
+      if (freshGesture || (stackEndHolding && isDiscreteWheelNotch(event))) {
+        goToFrame(flowStageIndex + 1, 1, event.deltaY || 0);
         return true;
       }
 
-      if (!stackHandoffArmed) {
-        armStackHandoffAfterRelease();
-        return true;
-      }
-
-      clearTimeout(stackHandoffTimer);
-      stackHandoffLocked = false;
-      stackHandoffArmed = false;
-      const targetIndex = Math.min(frames.length - 1, Math.max(0, flowStageIndex + Math.sign(direction)));
-      if (targetIndex !== flowStageIndex) goToFrame(targetIndex, Math.sign(direction), event.deltaY || 0);
+      stackEndHolding = true;
+      smoothScroll?.stop();
+      setScrollPosition(bounds.end, true);
+      queueStackProgress();
       return true;
     };
     window.addEventListener("wheel", (event) => {
@@ -1387,7 +1382,7 @@
     let frameSnapTimer = 0;
     const snapNearestEditorialFrame = () => {
       frameSnapTimer = 0;
-      if (frameWheelLocked || body.classList.contains("is-transitioning") || isInsideStackScroll() || stackHandoffLocked) return;
+      if (frameWheelLocked || body.classList.contains("is-transitioning") || isInsideStackScroll() || stackEndHolding) return;
       let nearest = null;
       let nearestTop = 0;
       let nearestDistance = Infinity;
