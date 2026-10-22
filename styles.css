@@ -412,7 +412,7 @@
     .scroll-highlight { color: inherit; background-color: transparent; background-image: linear-gradient(102deg,rgba(0,124,112,.28) 0%,rgba(23,55,215,.28) 18%,rgba(123,20,237,.28) 32%,rgba(221,25,233,.28) 46%,rgba(240,108,168,.28) 59%,rgba(255,220,88,.28) 73%,rgba(200,197,238,.28) 86%,rgba(0,124,112,.28) 100%); background-position: 0 92%; background-size: 0% 68%; background-repeat: no-repeat; box-decoration-break: clone; -webkit-box-decoration-break: clone; transition: background-size .82s cubic-bezier(.16,1,.3,1); }
     .scroll-highlight .lightframe-ink { color: transparent; background: linear-gradient(102deg,var(--brand-teal) 0%,var(--brand-blue) 18%,var(--brand-violet) 32%,var(--brand-magenta) 46%,var(--brand-pink) 59%,var(--brand-gold) 73%,var(--brand-lilac) 86%,var(--brand-teal) 100%); background-size: 100% 100%; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .scroll-highlight .lightframe-ink .flow-word { display: inline; color: inherit; background: none; -webkit-text-fill-color: inherit; }
-    #about.is-accent-revealed .scroll-highlight { background-size: 100% 68%; }
+    #about.is-accent-revealed .scroll-highlight { background-size: 100% 68%; transition-duration: 1.2s; }
     .block-reveal-line { position: relative; display: inline-block; color: inherit; }
     .motion-detail-ready .block-reveal-line { clip-path: inset(0 100% 0 0); }
     .block-reveal-line::after { position: absolute; inset: 0; background: #1737d7; content: ""; transform: translateX(-101%); }
@@ -427,12 +427,13 @@
     .archive-link:hover .archive-link-arrow { transform: translate(2px,-2px); }
     .archive-preview { position: relative; height: min(60vh,560px); min-height: 360px; }
     .archive-preview-card { position: absolute; width: 35%; margin: 0; filter: drop-shadow(0 20px 28px rgba(30,24,49,.1)); transform: rotate(var(--rotation)); }
-    .archive-preview-card img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: #fff; }
+    .archive-preview-card img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: #fff; transition: transform 380ms var(--out); }
     .archive-preview-caption,.archive-preview-card figcaption { display: flex; gap: 9px; padding-top: 9px; align-items: baseline; font-size: clamp(.68rem,.85vw,.78rem); letter-spacing: -.015em; }
     .archive-preview-caption > span:first-child,.archive-preview-card figcaption span { color: rgba(8,8,8,.42); font-size: .64rem; }
     .archive-preview-caption strong,.archive-preview-card figcaption strong { font-weight: 650; }
     a.archive-preview-card { color: inherit; text-decoration: none; cursor: pointer; transition: filter .25s ease,transform .25s var(--out); }
     a.archive-preview-card:hover { filter: drop-shadow(0 24px 34px rgba(30,24,49,.19)); transform: translateY(-5px) rotate(var(--rotation)); }
+    a.archive-preview-card:hover img { transform: scale(1.045); }
     a.archive-preview-card:active { transform: translateY(0) scale(.97) rotate(var(--rotation)); transition-duration: .06s; }
     a.archive-preview-card:focus-visible { outline: 2px solid #1737d7; outline-offset: 8px; }
     .archive-preview-caption .preview-arrow { margin-left: auto; color: #1737d7; font-size: 1rem; line-height: .7; }
@@ -459,7 +460,8 @@
     .contact-secondary:hover span { transform: translate(3px,-3px); }
     .contact-secondary:active { opacity: .65; transform: scale(.97); transition-duration: 60ms; }
     .contact-secondary:focus-visible, .magnetic:focus-visible { outline: 2px solid #fff; outline-offset: 6px; }
-    .magnetic { display: grid; width: clamp(132px,14vw,180px); height: clamp(132px,14vw,180px); flex: 0 0 auto; place-items: center; color: #050505; background: #fff; border-radius: 50%; box-shadow: none; will-change: transform; }
+    .magnetic { display: grid; width: clamp(132px,14vw,180px); height: clamp(132px,14vw,180px); flex: 0 0 auto; place-items: center; color: #050505; background: #fff; border-radius: 50%; box-shadow: none; transition: box-shadow 220ms ease; will-change: transform; }
+    .magnetic:hover, .magnetic:focus-visible { box-shadow: 0 0 0 1px rgba(255,255,255,.5), 0 0 22px 5px rgba(255,255,255,.16); }
     .magnetic-inner { display: grid; gap: 8px; place-items: center; font-size: .86rem; font-weight: 650; transition: transform 300ms var(--out); }
     .magnetic-inner span { text-align: center; line-height: 1.3; }
     .magnetic-inner strong { font-size: 2.2rem; font-weight: 400; line-height: 1; }

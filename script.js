@@ -23,6 +23,8 @@
       if (context) {
         const base = document.createElement("canvas");
         const baseContext = base.getContext("2d", { alpha: false });
+        const activeBase = document.createElement("canvas");
+        const activeContext = activeBase.getContext("2d", { alpha: false });
         let columns = 0;
         let rows = 0;
         let pitch = 8;
@@ -30,6 +32,23 @@
         let blinkFrame = 0;
         let lastBlinkFrame = 0;
         let pulses = [];
+        let lightCells = [];
+        const pointerLight = { x: 0, y: 0, strength: 0, target: 0, startedAt: 0 };
+        const githubButton = contact.querySelector(".magnetic");
+        const setButtonLight = (active) => {
+          if (active && !pointerLight.target) pointerLight.startedAt = performance.now();
+          pointerLight.target = active ? 1 : 0;
+          const rect = contact.getBoundingClientRect();
+          const buttonRect = githubButton?.getBoundingClientRect();
+          pointerLight.x = buttonRect ? buttonRect.left + buttonRect.width / 2 - rect.left : 0;
+          pointerLight.y = buttonRect ? buttonRect.top + buttonRect.height / 2 - rect.top : 0;
+          drawBase();
+          if (reduceMotion) syncBlink();
+        };
+        githubButton?.addEventListener("pointerenter", () => setButtonLight(true));
+        githubButton?.addEventListener("pointerleave", () => setButtonLight(false));
+        githubButton?.addEventListener("focus", () => setButtonLight(true));
+        githubButton?.addEventListener("blur", () => setButtonLight(false));
         const noise = (x, y) => {
           let hash = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
           hash = Math.imul(hash ^ (hash >>> 13), 1274126177);
@@ -47,10 +66,17 @@
           return upper * (1 - easeY) + lower * easeY;
         };
         const drawBase = () => {
-          if (!baseContext) return;
+          if (!baseContext || !activeContext) return;
           baseContext.fillStyle = "#080808";
           baseContext.fillRect(0, 0, base.width, base.height);
+          activeContext.fillStyle = "#080808";
+          activeContext.fillRect(0, 0, activeBase.width, activeBase.height);
           const size = pitch - 1.5;
+          const lightSpread = Math.max(180, Math.min(base.width, base.height) * .42);
+          const farthestX = Math.max(pointerLight.x, base.width - pointerLight.x);
+          const farthestY = Math.max(pointerLight.y, base.height - pointerLight.y);
+          const maxDistance = Math.hypot(farthestX, farthestY);
+          lightCells = [];
           for (let row = 0; row < rows; row += 1) {
             for (let column = 0; column < columns; column += 1) {
               const grain = noise(column, row);
@@ -61,6 +87,18 @@
               const tone = Math.round(15 + Math.pow(light, 1.25) * 105 + grain * 12);
               baseContext.fillStyle = `rgb(${tone},${tone},${tone})`;
               baseContext.fillRect(column * pitch, row * pitch, size, size);
+              const distance = Math.hypot(column * pitch - pointerLight.x, row * pitch - pointerLight.y);
+              const falloff = 1 / (1 + Math.pow(distance / lightSpread, 2));
+              const scatteredLight = .55 + fieldNoise(column * .17 + 71, row * .15 + 29) * .45;
+              const activeTone = Math.min(245, tone + Math.round(154 * falloff * scatteredLight));
+              activeContext.fillStyle = `rgb(${activeTone},${activeTone},${activeTone})`;
+              activeContext.fillRect(column * pitch, row * pitch, size, size);
+              lightCells.push({
+                x: column * pitch,
+                y: row * pitch,
+                gain: Math.min(.82, (activeTone - tone) / (255 - tone)),
+                delay: distance / maxDistance * 1600 + (noise(column + 193, row + 337) - .5) * 240
+              });
             }
           }
           context.drawImage(base, 0, 0);
@@ -68,10 +106,13 @@
         const resizeSquares = () => {
           const rect = contact.getBoundingClientRect();
           pitch = rect.width < 650 ? 9 : 8;
-          contactSquares.width = base.width = Math.max(1, Math.ceil(rect.width));
-          contactSquares.height = base.height = Math.max(1, Math.ceil(rect.height));
+          contactSquares.width = base.width = activeBase.width = Math.max(1, Math.ceil(rect.width));
+          contactSquares.height = base.height = activeBase.height = Math.max(1, Math.ceil(rect.height));
           columns = Math.ceil(base.width / pitch);
           rows = Math.ceil(base.height / pitch);
+          const buttonRect = githubButton?.getBoundingClientRect();
+          pointerLight.x = buttonRect ? buttonRect.left + buttonRect.width / 2 - rect.left : 0;
+          pointerLight.y = buttonRect ? buttonRect.top + buttonRect.height / 2 - rect.top : 0;
           const pulseCount = Math.min(2200, Math.max(180, Math.round(columns * rows * .08)));
           const now = performance.now();
           pulses = Array.from({ length: pulseCount }, () => ({
@@ -89,19 +130,36 @@
           if (time - lastBlinkFrame < 32) return;
           lastBlinkFrame = time;
           context.drawImage(base, 0, 0);
+          pointerLight.strength += (pointerLight.target - pointerLight.strength) * .23;
+          if (pointerLight.strength > .005) {
+            const elapsed = time - pointerLight.startedAt;
+            const ease = (value) => {
+              const progress = Math.max(0, Math.min(1, value));
+              return progress * progress * (3 - 2 * progress);
+            };
+            const tileSize = pitch - 1.5;
+            lightCells.forEach((cell) => {
+              const arrival = ease((elapsed - cell.delay) / 650);
+              const departure = 1 - ease((elapsed - 2050 - cell.delay) / 700);
+              const alpha = cell.gain * arrival * departure * pointerLight.strength;
+              if (alpha < .008) return;
+              context.fillStyle = `rgba(255,255,255,${alpha})`;
+              context.fillRect(cell.x, cell.y, tileSize, tileSize);
+            });
+          }
           const size = pitch - 1.5;
           pulses.forEach((pulse) => {
             const progress = (time - pulse.start) / pulse.duration;
             if (progress >= 1) {
               pulse.column = Math.floor(Math.random() * columns);
               pulse.row = Math.floor(Math.random() * rows);
-              pulse.start = time + Math.random() * 650;
-              pulse.duration = 300 + Math.random() * 1000;
+              pulse.start = time + Math.random() * (pointerLight.strength > .1 ? 160 : 650);
+              pulse.duration = pointerLight.strength > .1 ? 220 + Math.random() * 520 : 300 + Math.random() * 1000;
               pulse.brightness = .58 + Math.random() * .42;
               return;
             }
             if (progress > 0) {
-              const alpha = Math.pow(Math.sin(progress * Math.PI), .7) * pulse.brightness;
+              const alpha = Math.pow(Math.sin(progress * Math.PI), .7) * pulse.brightness * (1 + pointerLight.strength * .35);
               context.fillStyle = `rgba(255,255,255,${alpha})`;
               context.fillRect(pulse.column * pitch, pulse.row * pitch, size, size);
             }
@@ -111,7 +169,14 @@
           window.cancelAnimationFrame(blinkFrame);
           blinkFrame = 0;
           if (visible && !document.hidden && !reduceMotion) blinkFrame = window.requestAnimationFrame(blink);
-          else context.drawImage(base, 0, 0);
+          else {
+            context.drawImage(base, 0, 0);
+            if (reduceMotion && pointerLight.target) {
+              context.globalAlpha = 1;
+              context.drawImage(activeBase, 0, 0);
+              context.globalAlpha = 1;
+            }
+          }
         };
         const observer = new IntersectionObserver(([entry]) => {
           visible = entry.isIntersecting;
@@ -971,6 +1036,7 @@
 
         const isEditorialScene = sceneKey === "about" || sceneKey === "now";
         if (isEditorialScene) {
+          timeline.delay(.22);
           const textGroups = items
             .map((item) => [...item.querySelectorAll(".flow-word")])
             .filter((group) => group.length);
@@ -993,8 +1059,8 @@
           if (surfaces.length) {
             timeline.fromTo(surfaces,
               { opacity: 0, y: direction * 24, scale: .992 },
-              { opacity: 1, y: 0, scale: 1, duration: .46, stagger: .075, clearProps: "transform" },
-              .03
+              { opacity: 1, y: 0, scale: 1, duration: .68, stagger: .11, clearProps: "transform" },
+              .08
             );
           }
 
@@ -1006,13 +1072,21 @@
                 rotateX: 0,
                 skewY: 0,
                 filter: "blur(0px)",
-                duration: .54,
-                stagger: Math.min(.026, .28 / Math.max(1, words.length)),
+                duration: .72,
+                stagger: Math.min(.036, .4 / Math.max(1, words.length)),
                 clearProps: "transform,filter"
               },
-              .055 + groupIndex * .082
+              .12 + groupIndex * .11
             );
           });
+
+          if (sceneKey === "now") {
+            timeline.fromTo(frame.querySelectorAll(".interest h3"),
+              { x: (index) => index % 2 ? 30 : -30 },
+              { x: 0, duration: .88, stagger: .14, ease: "power3.out", clearProps: "transform" },
+              .32
+            );
+          }
 
           timeline.eventCallback("onComplete", () => {
             items.forEach((item) => item.style.removeProperty("will-change"));
@@ -1063,6 +1137,19 @@
             },
             { opacity: 1, x: 0, y: 0, scale: 1, rotate: 0, duration: .44, stagger: { each: .006, from: "center" }, ease: "expo.out", clearProps: "transform,opacity" },
             .04
+          );
+        }
+        if (sceneKey === "archive-frame") {
+          const images = [...frame.querySelectorAll(".archive-preview-card img")];
+          timeline.fromTo(images,
+            { clipPath: "inset(0 100% 0 0)", scale: 1.12 },
+            { clipPath: "inset(0 0% 0 0)", scale: 1, duration: .72, stagger: .13, ease: "power3.inOut", clearProps: "clipPath,scale" },
+            .18
+          );
+          timeline.fromTo(frame.querySelectorAll(".archive-preview-caption,.archive-preview-card figcaption"),
+            { opacity: 0, y: 12 },
+            { opacity: 1, y: 0, duration: .36, stagger: .12, clearProps: "transform,opacity" },
+            .57
           );
         }
         return;
