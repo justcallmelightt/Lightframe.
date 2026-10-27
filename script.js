@@ -7,6 +7,7 @@
     const interestCards = [...document.querySelectorAll(".interest")];
     const flowStage = document.querySelector("[data-flow-stage]");
     const flowLanes = flowStage ? [...flowStage.querySelectorAll(".flow-lane")] : [];
+    const stackMontage = flowStage?.querySelector(".stack-montage");
     const siteHeader = document.querySelector(".site-header");
     const frameFlash = document.querySelector(".frame-flash");
     const frameFlashName = document.querySelector(".frame-flash-name");
@@ -705,8 +706,42 @@
       });
     }
 
+    const profileTabs = [...document.querySelectorAll(".profile-tab")];
+    const profileScrollHint = document.querySelector(".profile-scroll-hint");
+    const updateProfileScrollHint = () => {
+      if (!profileScrollHint) return;
+      const selectedTab = profileTabs.find((item) => item.getAttribute("aria-selected") === "true");
+      const selectedPanel = selectedTab && document.getElementById(selectedTab.getAttribute("aria-controls"));
+      profileScrollHint.hidden = !selectedPanel || selectedPanel.scrollTop + selectedPanel.clientHeight >= selectedPanel.scrollHeight - 2;
+    };
+    const selectProfileTab = (tab, focus = false) => {
+      if (!tab) return;
+      profileTabs.forEach((item) => {
+        const selected = item === tab;
+        item.setAttribute("aria-selected", String(selected));
+        item.tabIndex = selected ? 0 : -1;
+        const panel = document.getElementById(item.getAttribute("aria-controls"));
+        if (panel) panel.hidden = !selected;
+      });
+      requestAnimationFrame(updateProfileScrollHint);
+      if (focus) tab.focus();
+    };
+    profileTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectProfileTab(tab));
+      tab.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? profileTabs.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + profileTabs.length) % profileTabs.length;
+        selectProfileTab(profileTabs[nextIndex], true);
+      });
+    });
+    document.querySelectorAll(".profile-panel").forEach((panel) => panel.addEventListener("scroll", updateProfileScrollHint, { passive: true }));
+    window.addEventListener("resize", updateProfileScrollHint, { passive: true });
+    requestAnimationFrame(updateProfileScrollHint);
+
     const frames = [...document.querySelectorAll(".frame")];
     const flowStageIndex = frames.indexOf(flowStage);
+    const profileFrameIndex = frames.findIndex((frame) => frame.id === "profile");
     let frameWheelLocked = false;
     let frameTransitionToken = 0;
     let stackEndHolding = false;
@@ -724,6 +759,12 @@
     };
     const nearestFrameIndex = () => {
       if (!reduceMotion && isInsideStackScroll()) return flowStageIndex;
+      if (!reduceMotion && profileFrameIndex >= 0) {
+        const profileFrame = frames[profileFrameIndex];
+        const profileTop = profileFrame.getBoundingClientRect().top + window.scrollY;
+        const profileEnd = profileTop + profileFrame.offsetHeight - window.innerHeight;
+        if (window.scrollY >= profileTop - 2 && window.scrollY <= profileEnd + 2) return profileFrameIndex;
+      }
       let nearestIndex = 0;
       let nearestDistance = Infinity;
       frames.forEach((frame, index) => {
@@ -802,6 +843,133 @@
       const overshoot = 1.70158;
       const shifted = value - 1;
       return 1 + (overshoot + 1) * shifted ** 3 + overshoot * shifted ** 2;
+    };
+    const stackMontageTrack = stackMontage?.querySelector(".profile-montage-track");
+    const stackMontageCounter = stackMontage?.querySelector(".profile-montage-counter");
+    const stackMontageLabels = [...new Set(flowStage?.querySelectorAll(".stack-pill") ? [...flowStage.querySelectorAll(".stack-pill")].map((item) => item.textContent.trim()) : [])];
+    stackMontageLabels.forEach((label) => {
+      const line = document.createElement("span");
+      line.className = "profile-montage-line";
+      if (label === "Lightframe.") {
+        const brandText = document.createElement("span");
+        brandText.className = "stack-montage-brand-text";
+        brandText.textContent = label;
+        line.appendChild(brandText);
+      } else line.textContent = label;
+      stackMontageTrack?.appendChild(line);
+    });
+    let stackMontageTimeline = null;
+    let stackMontagePlaying = false;
+    let stackMontageFrame = 0;
+    let stackMontageStartedAt = 0;
+    const stackMontageAnimations = [];
+    const clearStackMontageAnimations = () => {
+      stackMontageTimeline?.kill();
+      stackMontageAnimations.forEach((animation) => animation.cancel());
+      stackMontageAnimations.length = 0;
+      cancelAnimationFrame(stackMontageFrame);
+      stackMontageFrame = 0;
+    };
+    const finishStackMontage = () => {
+      stackMontagePlaying = false;
+      stackMontage.style.opacity = "0";
+      stackMontage.style.visibility = "hidden";
+      siteHeader?.classList.add("is-on-light");
+    };
+    const playStackMontage = () => {
+      if (!stackMontage || reduceMotion || stackMontagePlaying || intro?.isConnected) return;
+      clearStackMontageAnimations();
+      const lines = [...stackMontageTrack.children];
+      if (!lines.length) return;
+      stackMontagePlaying = true;
+      stackMontage.style.opacity = "1";
+      stackMontage.style.visibility = "visible";
+      stackMontage.style.backgroundColor = "#000000";
+      stackMontage.style.color = "#ffffff";
+      lines.forEach((line) => {
+        line.style.opacity = "0";
+        line.style.transform = "translate3d(0,-160px,0)";
+      });
+      stackMontageCounter.textContent = `01 / ${String(lines.length).padStart(2, "0")}`;
+      const beats = lines.map((_, index) => {
+        const progress = lines.length > 1 ? index / (lines.length - 1) : 0;
+        return .34 - .16 * progress ** 1.4;
+      });
+      const startTimes = [0];
+      beats.forEach((beat) => startTimes.push(startTimes[startTimes.length - 1] + beat));
+      if (!gsapEngine) {
+        const duration = startTimes[lines.length] * 1000;
+        let renderedIndex = -1;
+        stackMontageStartedAt = performance.now();
+        const render = (now) => {
+          if (!stackMontagePlaying) return;
+          const elapsed = now - stackMontageStartedAt;
+          let index = renderedIndex;
+          while (index + 1 < lines.length && elapsed >= startTimes[index + 1] * 1000) index++;
+          if (index !== renderedIndex) {
+            if (renderedIndex >= 0) {
+              const previous = lines[renderedIndex];
+              previous.style.opacity = "0";
+              previous.style.transform = "translate3d(0,70px,0)";
+            }
+            const line = lines[index];
+            const beatMs = beats[index] * 1000;
+            const isLight = Math.floor(index / 5) % 2 === 1;
+            stackMontage.style.backgroundColor = isLight ? "#ffffff" : "#000000";
+            stackMontage.style.color = isLight ? "#111114" : "#ffffff";
+            siteHeader?.classList.toggle("is-on-light", isLight);
+            stackMontageCounter.style.color = isLight ? "#111114" : "#ffffff";
+            stackMontageCounter.textContent = `${String(index + 1).padStart(2, "0")} / ${String(lines.length).padStart(2, "0")}`;
+            line.style.opacity = "1";
+            line.style.transform = "translate3d(0,0,0)";
+            if (line.animate) {
+              const animation = line.animate([
+                { opacity: 0, transform: "translate3d(0,-160px,0)" },
+                { opacity: 1, transform: "translate3d(0,0,0)", offset: .4 },
+                { opacity: 1, transform: "translate3d(0,0,0)", offset: .86 },
+                { opacity: 0, transform: "translate3d(0,70px,0)" }
+              ], { duration: beatMs, easing: "cubic-bezier(.16,1,.3,1)", fill: "both" });
+              stackMontageAnimations.push(animation);
+            }
+            const brandText = line.querySelector(".stack-montage-brand-text");
+            if (brandText?.animate) {
+              stackMontageAnimations.push(brandText.animate([
+                { backgroundPosition: "0% 50%" },
+                { backgroundPosition: "100% 50%" }
+              ], { delay: beatMs * .34, duration: beatMs * .58, easing: "linear", fill: "both" }));
+            }
+            renderedIndex = index;
+          }
+          if (elapsed < duration) {
+            stackMontageFrame = requestAnimationFrame(render);
+            return;
+          }
+          if (stackMontage.animate) {
+            const fade = stackMontage.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 280, easing: "ease-in-out", fill: "forwards" });
+            fade.onfinish = finishStackMontage;
+          } else finishStackMontage();
+        };
+        stackMontageFrame = requestAnimationFrame(render);
+        return;
+      }
+      const timeline = gsapEngine.timeline({
+        delay: .38,
+        onComplete: finishStackMontage
+      });
+      stackMontageTimeline = timeline;
+      lines.forEach((line, index) => {
+        const at = startTimes[index];
+        const beat = beats[index];
+        const isLight = Math.floor(index / 5) % 2 === 1;
+        timeline.set(stackMontage, { backgroundColor: isLight ? "#ffffff" : "#000000", color: isLight ? "#111114" : "#ffffff" }, at);
+        timeline.set(stackMontageCounter, { color: isLight ? "#111114" : "#ffffff" }, at);
+        timeline.call(() => { stackMontageCounter.textContent = `${String(index + 1).padStart(2, "0")} / ${String(lines.length).padStart(2, "0")}`; }, [], at);
+        timeline.fromTo(line, { autoAlpha: 0, y: -160 }, { autoAlpha: 1, y: 0, duration: beat * .4, ease: "power3.out" }, at);
+        timeline.to(line, { autoAlpha: 0, y: 70, duration: beat * .14, ease: "power2.in" }, at + beat * .86);
+        const brandText = line.querySelector(".stack-montage-brand-text");
+        if (brandText) timeline.fromTo(brandText, { backgroundPosition: "0% 50%" }, { backgroundPosition: "100% 50%", duration: beat * .58, ease: "none" }, at + beat * .34);
+      });
+      timeline.to(stackMontage, { autoAlpha: 0, duration: .28, ease: "power2.inOut" }, startTimes[lines.length] + .08);
     };
     const renderStackProgress = (forcedValue) => {
       stackProgressRaf = 0;
@@ -895,6 +1063,7 @@
       ["now", ".section-label,.now-title,.interest"],
       ["stack-section", ".section-label,.stack-heading h2,.flow-field,.flow-note"],
       ["archive-frame", ".archive-index,.archive-title,.archive-copy,.archive-link,.archive-preview-card,.archive-frame-bottom"],
+      ["profile-frame", ".profile-heading h2,.profile-heading > p:last-child,.profile-content"],
       ["contact", ".section-label,.contact-title,.contact-copy,.magnetic,.footer-line"]
     ]);
 
@@ -937,9 +1106,10 @@
 
     let activeSceneTimeline = null;
     let heroIdleTimeline = null;
+    const profileFrame = frames[profileFrameIndex];
     const animateScene = (frame, direction = 1) => {
       if (!frame) return;
-      siteHeader?.classList.toggle("is-on-light", frame === flowStage || frame.id === "works");
+      siteHeader?.classList.toggle("is-on-light", frame === flowStage || frame.id === "works" || frame.id === "profile");
       const sceneKey = [...sceneSelectors.keys()].find((key) => frame.classList.contains(key));
       const selector = sceneSelectors.get(sceneKey);
       if (!selector) return;
@@ -954,7 +1124,6 @@
           gsapEngine.set(items, { clearProps: "all" });
           return;
         }
-
         const timeline = gsapEngine.timeline({
           defaults: { ease: "power4.out" },
           onComplete: () => {
@@ -1283,7 +1452,17 @@
       if (frame === accentFrame && (reduceMotion || previousIndex < 0)) {
         accentTimer = window.setTimeout(revealAboutAccent, reduceMotion ? 0 : 520);
       }
-      if (frame === flowStage) requestAnimationFrame(boostTechnology);
+      if (frame === flowStage) {
+        requestAnimationFrame(boostTechnology);
+        playStackMontage();
+      } else if (previousIndex === flowStageIndex) {
+        clearStackMontageAnimations();
+        stackMontagePlaying = false;
+        if (stackMontage) {
+          stackMontage.style.opacity = "0";
+          stackMontage.style.visibility = "hidden";
+        }
+      }
     };
 
     const syncSceneFromViewport = (force = false) => {
@@ -1411,6 +1590,20 @@
       const wheelDelta = Math.abs(event.wheelDeltaY || 0);
       return wheelDelta >= 120 && wheelDelta % 120 === 0;
     };
+    const handleProfileSnapInput = (event) => {
+      if (reduceMotion || profileFrameIndex < 0 || !event.deltaY || event.defaultPrevented) return;
+      const direction = Math.sign(event.deltaY);
+      const previousFrame = frames[profileFrameIndex - 1];
+      const profileTop = profileFrame.getBoundingClientRect().top + window.scrollY;
+      const previousTop = previousFrame?.getBoundingClientRect().top + window.scrollY;
+      if (!previousFrame) return;
+      const entering = direction > 0 && window.scrollY >= previousTop - 28 && window.scrollY < profileTop - 2;
+      const leaving = direction < 0 && Math.abs(window.scrollY - profileTop) < 3;
+      if (!entering && !leaving) return;
+      event.preventDefault();
+      if (frameWheelLocked) return;
+      goToFrame(entering ? profileFrameIndex : profileFrameIndex - 1, direction, event.deltaY);
+    };
     const handleStackHandoffInput = (event, direction) => {
       if (reduceMotion || !flowStage || !direction) return false;
       // Do not let the tail of a trackpad gesture alter scroll position while
@@ -1447,6 +1640,7 @@
     };
     window.addEventListener("wheel", (event) => {
       handleStackHandoffInput(event, event.deltaY);
+      handleProfileSnapInput(event);
     }, { capture: true, passive: false });
 
     document.querySelectorAll('a[href^="#"]').forEach((link) => {
@@ -1467,13 +1661,21 @@
     // completion handoff own that section's scroll behavior.
     const snapFrames = frames.filter((frame) => frame !== flowStage);
     let frameSnapTimer = 0;
+    let lastEditorialScrollY = window.scrollY;
+    let editorialScrollDirection = 0;
     const snapNearestEditorialFrame = () => {
       frameSnapTimer = 0;
       if (frameWheelLocked || body.classList.contains("is-transitioning") || isInsideStackScroll() || stackEndHolding) return;
+      if (profileFrame && !reduceMotion) {
+        const profileTop = profileFrame.getBoundingClientRect().top + window.scrollY;
+        const profileEnd = profileTop + profileFrame.offsetHeight - window.innerHeight;
+        if (window.scrollY >= profileTop - 2 && window.scrollY <= profileEnd + 2) return;
+      }
       let nearest = null;
       let nearestTop = 0;
       let nearestDistance = Infinity;
       snapFrames.forEach((frame) => {
+        if (frame === profileFrame && editorialScrollDirection < 0 && window.scrollY < frame.offsetTop) return;
         const top = frame.getBoundingClientRect().top + window.scrollY;
         const distance = Math.abs(top - window.scrollY);
         if (distance >= nearestDistance) return;
@@ -1485,6 +1687,9 @@
       setScrollPosition(nearestTop, false);
     };
     const queueEditorialFrameSnap = () => {
+      const scrollDelta = window.scrollY - lastEditorialScrollY;
+      if (Math.abs(scrollDelta) > 1) editorialScrollDirection = Math.sign(scrollDelta);
+      lastEditorialScrollY = window.scrollY;
       clearTimeout(frameSnapTimer);
       frameSnapTimer = window.setTimeout(snapNearestEditorialFrame, 180);
     };
@@ -1502,4 +1707,5 @@
       }
     }, { passive: true });
 
-    if (reduceMotion) requestAnimationFrame(() => syncSceneFromViewport(true));
+    const initialHashFrame = document.querySelector(window.location.hash);
+    if (reduceMotion || frames.includes(initialHashFrame)) requestAnimationFrame(() => syncSceneFromViewport(true));
