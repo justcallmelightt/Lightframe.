@@ -436,52 +436,61 @@
       } catch (_) {}
 
       intro.insertAdjacentHTML("afterbegin", `
+        <div class="intro-spectrum" aria-hidden="true"></div>
         <div class="intro-white" aria-hidden="true"></div>
         <div class="intro-code" aria-hidden="true"><span>const message =</span><strong>“일상의 문제를 웹으로 정리합니다”;</strong></div>
         <div class="intro-meter" aria-hidden="true"><i></i></div>
       `);
       const blackHold = 1;
-      const whiteFade = 1.2;
-      const whiteReady = blackHold + whiteFade;
-      const symbolReveal = whiteReady + 1.8;
-      const introExit = symbolReveal + 1.25;
+      const blackFade = 1.2;
+      const fadeShift = blackFade - .55;
 
       if (!gsapEngine) {
+        const spectrum = intro.querySelector(".intro-spectrum");
         const white = intro.querySelector(".intro-white");
         const meter = intro.querySelector(".intro-meter");
         const lockup = intro.querySelector(".intro-lockup");
         const codeLines = [...intro.querySelectorAll(".intro-code > *")];
-        white.animate([{ opacity: 0 }, { opacity: 1 }], { duration: whiteFade * 1000, delay: blackHold * 1000, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" });
+        spectrum.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: blackFade * 1000, delay: blackHold * 1000, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" }
+        );
+        spectrum.animate(
+          [{ transform: "translateX(0)" }, { transform: "translateX(-75%)" }],
+          { duration: 2400, delay: (blackHold + blackFade) * 1000, easing: "linear", fill: "forwards" }
+        );
         window.setTimeout(() => {
-          lockup.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 320, easing: "cubic-bezier(.16,1,.3,1)", fill: "forwards" });
-        }, whiteReady * 1000);
-        window.setTimeout(() => {
-          meter.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, fill: "forwards" });
-          meter.querySelector("i").animate(
-            [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }],
-            { duration: 1120, easing: "cubic-bezier(.45,0,.2,1)", fill: "forwards" }
-          );
-          codeLines.forEach((line, index) => line.animate(
-            [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "translateY(0)" }],
-            { duration: 360, delay: index * 80, fill: "forwards" }
-          ));
-        }, symbolReveal * 1000);
-        window.setTimeout(() => {
-          meter.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
-          intro.animate([{ transform: "translateY(0)" }, { transform: "translateY(-100%)" }], { duration: 720, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards" })
-            .finished.then(finishIntro).catch(finishIntro);
-        }, introExit * 1000);
+          white.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, fill: "forwards" }).finished.then(() => {
+            meter.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 460, fill: "forwards" });
+            meter.querySelector("i").animate(
+              [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }],
+              { duration: 900, easing: "cubic-bezier(.45,0,.2,1)", fill: "forwards" }
+            );
+            lockup.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 460, fill: "forwards" });
+            codeLines.forEach((line, index) => line.animate(
+              [{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }],
+              { duration: 420, delay: index * 90, fill: "forwards" }
+            ));
+            window.setTimeout(() => {
+              meter.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
+              intro.animate([{ transform: "translateY(0)" }, { transform: "translateY(-100%)" }], { duration: 720, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards" })
+                .finished.then(finishIntro).catch(finishIntro);
+            }, 1160);
+          }).catch(finishIntro);
+        }, (blackHold + fadeShift) * 1000 + 2830);
         return;
       }
 
       gsapEngine.timeline({ onComplete: finishIntro })
-        .to(".intro-white", { opacity: 1, duration: whiteFade, ease: "sine.inOut" }, blackHold)
-        .fromTo(".intro-lockup", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: .32, ease: "power2.out" }, whiteReady)
-        .fromTo(".intro-meter", { opacity: 0 }, { opacity: 1, duration: .22, ease: "power2.out" }, symbolReveal)
-        .fromTo(".intro-meter i", { scaleX: 0 }, { scaleX: 1, duration: 1.12, ease: "power2.inOut" }, symbolReveal)
-        .fromTo(".intro-code > *", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .36, stagger: .08, ease: "power2.out" }, symbolReveal + .05)
-        .to(".intro-meter", { opacity: 0, duration: .18 }, introExit - .1)
-        .to(intro, { yPercent: -100, duration: .72, ease: "expo.inOut" }, introExit);
+        .fromTo(".intro-spectrum", { opacity: 0 }, { opacity: 1, duration: blackFade, ease: "sine.inOut" }, blackHold)
+        .fromTo(".intro-spectrum", { xPercent: 0 }, { xPercent: -75, duration: 2.4, ease: "none" }, blackHold + blackFade)
+        .to(".intro-white", { opacity: 1, duration: .36, ease: "power2.inOut" }, blackHold + fadeShift + 2.83)
+        .fromTo(".intro-lockup", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .46, ease: "power2.out" }, blackHold + fadeShift + 3.2)
+        .fromTo(".intro-meter", { opacity: 0 }, { opacity: 1, duration: .46, ease: "power2.out" }, blackHold + fadeShift + 3.2)
+        .fromTo(".intro-meter i", { scaleX: 0 }, { scaleX: 1, duration: .9, ease: "power2.inOut" }, blackHold + fadeShift + 3.2)
+        .fromTo(".intro-code > *", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .42, stagger: .09, ease: "power2.out" }, blackHold + fadeShift + 3.3)
+        .to(".intro-meter", { opacity: 0, duration: .18 }, blackHold + fadeShift + 4.2)
+        .to(intro, { yPercent: -100, duration: .72, ease: "expo.inOut" }, blackHold + fadeShift + 4.35);
     };
 
     playIntro();
