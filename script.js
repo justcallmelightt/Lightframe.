@@ -6,7 +6,6 @@
     const hero = document.querySelector(".hero");
     const interestCards = [...document.querySelectorAll(".interest")];
     const flowStage = document.querySelector("[data-flow-stage]");
-    const flowLanes = flowStage ? [...flowStage.querySelectorAll(".flow-lane")] : [];
     const stackMontage = flowStage?.querySelector(".stack-montage");
     const siteHeader = document.querySelector(".site-header");
     const frameFlash = document.querySelector(".frame-flash");
@@ -190,24 +189,7 @@
       }
     }
 
-    let smoothScroll = null;
-    if (!reduceMotion && LenisEngine && gsapEngine) {
-      smoothScroll = new LenisEngine({
-        lerp: .06,
-        smoothWheel: true,
-        wheelMultiplier: .45,
-        anchors: true
-      });
-      if (scrollTriggerEngine) smoothScroll.on("scroll", scrollTriggerEngine.update);
-      gsapEngine.ticker.add((time) => smoothScroll.raf(time * 1000));
-      gsapEngine.ticker.lagSmoothing(0);
-      if (intro) smoothScroll.stop();
-    }
     const setScrollPosition = (top, immediate = true) => {
-      if (smoothScroll) {
-        smoothScroll.scrollTo(top, immediate ? { immediate: true, force: true } : { duration: .8, force: true });
-        return;
-      }
       window.scrollTo({ top, behavior: immediate ? "auto" : "smooth" });
     };
 
@@ -437,11 +419,9 @@
       requestAnimationFrame(() => {
         document.documentElement.classList.remove("motion-booting");
         intro?.remove();
-        scrollTriggerEngine?.refresh();
         const hashTarget = window.location.hash && document.querySelector(window.location.hash);
         const hashFrameIndex = frames.indexOf(hashTarget);
         if (hashFrameIndex >= 0) alignFrame(hashFrameIndex);
-        smoothScroll?.start();
         syncSceneFromViewport(true);
       });
     };
@@ -456,61 +436,52 @@
       } catch (_) {}
 
       intro.insertAdjacentHTML("afterbegin", `
-        <div class="intro-spectrum" aria-hidden="true"></div>
         <div class="intro-white" aria-hidden="true"></div>
         <div class="intro-code" aria-hidden="true"><span>const message =</span><strong>“일상의 문제를 웹으로 정리합니다”;</strong></div>
         <div class="intro-meter" aria-hidden="true"><i></i></div>
       `);
       const blackHold = 1;
-      const blackFade = 1.2;
-      const fadeShift = blackFade - .55;
+      const whiteFade = 1.2;
+      const whiteReady = blackHold + whiteFade;
+      const symbolReveal = whiteReady + 1.8;
+      const introExit = symbolReveal + 1.25;
 
       if (!gsapEngine) {
-        const spectrum = intro.querySelector(".intro-spectrum");
         const white = intro.querySelector(".intro-white");
         const meter = intro.querySelector(".intro-meter");
         const lockup = intro.querySelector(".intro-lockup");
         const codeLines = [...intro.querySelectorAll(".intro-code > *")];
-        spectrum.animate(
-          [{ opacity: 0 }, { opacity: 1 }],
-          { duration: blackFade * 1000, delay: blackHold * 1000, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" }
-        );
-        spectrum.animate(
-          [{ transform: "translateX(0)" }, { transform: "translateX(-75%)" }],
-          { duration: 2400, delay: (blackHold + blackFade) * 1000, easing: "linear", fill: "forwards" }
-        );
+        white.animate([{ opacity: 0 }, { opacity: 1 }], { duration: whiteFade * 1000, delay: blackHold * 1000, easing: "cubic-bezier(.45,0,.55,1)", fill: "forwards" });
         window.setTimeout(() => {
-          white.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, fill: "forwards" }).finished.then(() => {
-            meter.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 460, fill: "forwards" });
-            meter.querySelector("i").animate(
-              [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }],
-              { duration: 900, easing: "cubic-bezier(.45,0,.2,1)", fill: "forwards" }
-            );
-            lockup.animate([{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 460, fill: "forwards" });
-            codeLines.forEach((line, index) => line.animate(
-              [{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }],
-              { duration: 420, delay: index * 90, fill: "forwards" }
-            ));
-            window.setTimeout(() => {
-              meter.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
-              intro.animate([{ transform: "translateY(0)" }, { transform: "translateY(-100%)" }], { duration: 720, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards" })
-                .finished.then(finishIntro).catch(finishIntro);
-            }, 1160);
-          }).catch(finishIntro);
-        }, (blackHold + fadeShift) * 1000 + 2830);
+          lockup.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 320, easing: "cubic-bezier(.16,1,.3,1)", fill: "forwards" });
+        }, whiteReady * 1000);
+        window.setTimeout(() => {
+          meter.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, fill: "forwards" });
+          meter.querySelector("i").animate(
+            [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }],
+            { duration: 1120, easing: "cubic-bezier(.45,0,.2,1)", fill: "forwards" }
+          );
+          codeLines.forEach((line, index) => line.animate(
+            [{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "translateY(0)" }],
+            { duration: 360, delay: index * 80, fill: "forwards" }
+          ));
+        }, symbolReveal * 1000);
+        window.setTimeout(() => {
+          meter.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: "forwards" });
+          intro.animate([{ transform: "translateY(0)" }, { transform: "translateY(-100%)" }], { duration: 720, easing: "cubic-bezier(.76,0,.24,1)", fill: "forwards" })
+            .finished.then(finishIntro).catch(finishIntro);
+        }, introExit * 1000);
         return;
       }
 
       gsapEngine.timeline({ onComplete: finishIntro })
-        .fromTo(".intro-spectrum", { opacity: 0 }, { opacity: 1, duration: blackFade, ease: "sine.inOut" }, blackHold)
-        .fromTo(".intro-spectrum", { xPercent: 0 }, { xPercent: -75, duration: 2.4, ease: "none" }, blackHold + blackFade)
-        .to(".intro-white", { opacity: 1, duration: .36, ease: "power2.inOut" }, blackHold + fadeShift + 2.83)
-        .fromTo(".intro-lockup", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .46, ease: "power2.out" }, blackHold + fadeShift + 3.2)
-        .fromTo(".intro-meter", { opacity: 0 }, { opacity: 1, duration: .46, ease: "power2.out" }, blackHold + fadeShift + 3.2)
-        .fromTo(".intro-meter i", { scaleX: 0 }, { scaleX: 1, duration: .9, ease: "power2.inOut" }, blackHold + fadeShift + 3.2)
-        .fromTo(".intro-code > *", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: .42, stagger: .09, ease: "power2.out" }, blackHold + fadeShift + 3.3)
-        .to(".intro-meter", { opacity: 0, duration: .18 }, blackHold + fadeShift + 4.2)
-        .to(intro, { yPercent: -100, duration: .72, ease: "expo.inOut" }, blackHold + fadeShift + 4.35);
+        .to(".intro-white", { opacity: 1, duration: whiteFade, ease: "sine.inOut" }, blackHold)
+        .fromTo(".intro-lockup", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: .32, ease: "power2.out" }, whiteReady)
+        .fromTo(".intro-meter", { opacity: 0 }, { opacity: 1, duration: .22, ease: "power2.out" }, symbolReveal)
+        .fromTo(".intro-meter i", { scaleX: 0 }, { scaleX: 1, duration: 1.12, ease: "power2.inOut" }, symbolReveal)
+        .fromTo(".intro-code > *", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: .36, stagger: .08, ease: "power2.out" }, symbolReveal + .05)
+        .to(".intro-meter", { opacity: 0, duration: .18 }, introExit - .1)
+        .to(intro, { yPercent: -100, duration: .72, ease: "expo.inOut" }, introExit);
     };
 
     playIntro();
@@ -744,21 +715,7 @@
     const profileFrameIndex = frames.findIndex((frame) => frame.id === "profile");
     let frameWheelLocked = false;
     let frameTransitionToken = 0;
-    let stackEndHolding = false;
-    let lastStackWheelAt = 0;
-    let stackScrollTrigger = null;
-    const stackScrollBounds = () => {
-      if (!flowStage) return null;
-      if (stackScrollTrigger) return { start: stackScrollTrigger.start, end: stackScrollTrigger.end };
-      const start = flowStage.offsetTop;
-      return { start, end: start + flowStage.offsetHeight - window.innerHeight };
-    };
-    const isInsideStackScroll = (slack = 2) => {
-      const bounds = stackScrollBounds();
-      return bounds && window.scrollY >= bounds.start - slack && window.scrollY <= bounds.end + slack;
-    };
     const nearestFrameIndex = () => {
-      if (!reduceMotion && isInsideStackScroll()) return flowStageIndex;
       if (!reduceMotion && profileFrameIndex >= 0) {
         const profileFrame = frames[profileFrameIndex];
         const profileTop = profileFrame.getBoundingClientRect().top + window.scrollY;
@@ -768,9 +725,7 @@
       let nearestIndex = 0;
       let nearestDistance = Infinity;
       frames.forEach((frame, index) => {
-        const frameTop = frame === flowStage && stackScrollTrigger
-          ? stackScrollTrigger.start
-          : frame.getBoundingClientRect().top + window.scrollY;
+        const frameTop = frame.getBoundingClientRect().top + window.scrollY;
         const distance = Math.abs(frameTop - window.scrollY);
         if (distance >= nearestDistance) return;
         nearestDistance = distance;
@@ -779,71 +734,6 @@
       return nearestIndex;
     };
 
-    let stackProgressRaf = 0;
-    let gradientIdleTimer = 0;
-    let gradientIdleRaf = 0;
-    let gradientIdleStartedAt = 0;
-    let gradientIdleOffset = 0;
-    let gradientLastFrameAt = 0;
-    let gradientLastProgress = null;
-    let gradientWasEligible = false;
-    const paintGradientIdle = () => {
-      flowStage.style.setProperty("--stack-gradient-idle-offset", gradientIdleOffset.toFixed(4));
-    };
-    const tickGradientIdle = (time) => {
-      gradientIdleRaf = 0;
-      if (document.hidden || !isInsideStackScroll()) {
-        gradientIdleOffset = 0;
-        gradientLastFrameAt = 0;
-        paintGradientIdle();
-        return;
-      }
-      const delta = gradientLastFrameAt ? Math.min(50, time - gradientLastFrameAt) : 16;
-      gradientLastFrameAt = time;
-      const elapsed = gradientIdleStartedAt ? time - gradientIdleStartedAt : 0;
-      const target = gradientIdleStartedAt ? Math.sin(elapsed * Math.PI * 2 / 8000) * .16 : 0;
-      gradientIdleOffset += (target - gradientIdleOffset) * (1 - Math.exp(-delta / (gradientIdleStartedAt ? 420 : 180)));
-      if (!gradientIdleStartedAt && Math.abs(gradientIdleOffset) < .0005) gradientIdleOffset = 0;
-      paintGradientIdle();
-      if (gradientIdleStartedAt || gradientIdleOffset) gradientIdleRaf = requestAnimationFrame(tickGradientIdle);
-      else gradientLastFrameAt = 0;
-    };
-    const updateGradientIdle = (progress, inStack) => {
-      const eligible = inStack && progress < .965 && !document.hidden;
-      if (gradientLastProgress !== null && Math.abs(progress - gradientLastProgress) < .0001 && eligible === gradientWasEligible) return;
-      gradientLastProgress = progress;
-      gradientWasEligible = eligible;
-      clearTimeout(gradientIdleTimer);
-      gradientIdleStartedAt = 0;
-      if (!gradientIdleRaf && gradientIdleOffset) gradientIdleRaf = requestAnimationFrame(tickGradientIdle);
-      if (eligible) {
-        gradientIdleTimer = window.setTimeout(() => {
-          gradientIdleStartedAt = performance.now();
-          gradientLastFrameAt = 0;
-          if (!gradientIdleRaf) gradientIdleRaf = requestAnimationFrame(tickGradientIdle);
-        }, 1000);
-      }
-    };
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden) {
-        gradientLastProgress = null;
-        queueStackProgress();
-        return;
-      }
-      clearTimeout(gradientIdleTimer);
-      cancelAnimationFrame(gradientIdleRaf);
-      gradientIdleRaf = 0;
-      gradientIdleStartedAt = 0;
-      gradientIdleOffset = 0;
-      gradientLastFrameAt = 0;
-      gradientWasEligible = false;
-      if (flowStage) paintGradientIdle();
-    });
-    const easeOutBack = (value) => {
-      const overshoot = 1.70158;
-      const shifted = value - 1;
-      return 1 + (overshoot + 1) * shifted ** 3 + overshoot * shifted ** 2;
-    };
     const stackMontageTrack = stackMontage?.querySelector(".profile-montage-track");
     const stackMontageCounter = stackMontage?.querySelector(".profile-montage-counter");
     const stackMontageLabels = [...new Set(flowStage?.querySelectorAll(".stack-pill") ? [...flowStage.querySelectorAll(".stack-pill")].map((item) => item.textContent.trim()) : [])];
@@ -914,7 +804,7 @@
             }
             const line = lines[index];
             const beatMs = beats[index] * 1000;
-            const isLight = Math.floor(index / 5) % 2 === 1;
+            const isLight = Math.floor(index / 3) % 2 === 1;
             stackMontage.style.backgroundColor = isLight ? "#ffffff" : "#000000";
             stackMontage.style.color = isLight ? "#111114" : "#ffffff";
             siteHeader?.classList.toggle("is-on-light", isLight);
@@ -960,7 +850,7 @@
       lines.forEach((line, index) => {
         const at = startTimes[index];
         const beat = beats[index];
-        const isLight = Math.floor(index / 5) % 2 === 1;
+        const isLight = Math.floor(index / 3) % 2 === 1;
         timeline.set(stackMontage, { backgroundColor: isLight ? "#ffffff" : "#000000", color: isLight ? "#111114" : "#ffffff" }, at);
         timeline.set(stackMontageCounter, { color: isLight ? "#111114" : "#ffffff" }, at);
         timeline.call(() => { stackMontageCounter.textContent = `${String(index + 1).padStart(2, "0")} / ${String(lines.length).padStart(2, "0")}`; }, [], at);
@@ -971,92 +861,6 @@
       });
       timeline.to(stackMontage, { autoAlpha: 0, duration: .28, ease: "power2.inOut" }, startTimes[lines.length] + .08);
     };
-    const renderStackProgress = (forcedValue) => {
-      stackProgressRaf = 0;
-      const bounds = stackScrollBounds();
-      if (!bounds || reduceMotion) return;
-      const distance = Math.max(1, bounds.end - bounds.start);
-      const measuredValue = (window.scrollY - bounds.start) / distance;
-      const value = Math.min(1, Math.max(0, Number.isFinite(forcedValue) ? forcedValue : measuredValue));
-      const visualProgress = .16 + value * .84;
-      const assembled = value >= .7;
-      const gradientProgress = Math.min(1, Math.max(0, (value - .04) / .91));
-      flowStage.style.setProperty("--stack-scroll", value.toFixed(4));
-      flowStage.style.setProperty("--stack-progress", visualProgress.toFixed(4));
-      flowStage.style.setProperty("--stack-gradient-progress", gradientProgress.toFixed(4));
-      flowLanes.forEach((lane, index) => {
-        const laneStart = .06 + index * .115;
-        const linearProgress = Math.min(1, Math.max(0, (value - laneStart) / .18));
-        const laneProgress = easeOutBack(linearProgress);
-        const direction = index % 2 ? 1 : -1;
-        const approach = direction * (1 - laneProgress) * (38 + index * 3);
-        const flowProgress = Math.min(1, Math.max(0, (value - .68) / .275));
-        const loopOrigin = direction > 0
-          ? linearProgress * -50 + flowProgress * 50
-          : -50 + linearProgress * 50 - flowProgress * 50;
-        const impact = Math.sin(Math.min(1, linearProgress) * Math.PI) * (1 - linearProgress) * 7;
-        lane.style.setProperty("--lane-progress", laneProgress.toFixed(4));
-        lane.style.setProperty("--track-scroll-x", `calc(${approach.toFixed(3)}vw + ${loopOrigin.toFixed(3)}%)`);
-        lane.style.setProperty("--lane-impact", `${impact.toFixed(3)}px`);
-      });
-      flowStage.classList.toggle("is-scrub-active", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
-      flowStage.classList.toggle("is-stack-assembled", assembled);
-      document.documentElement.classList.toggle("is-stack-scrubbing", window.scrollY >= bounds.start - 2 && window.scrollY <= bounds.end + 2);
-      updateGradientIdle(value, isInsideStackScroll());
-    };
-    const queueStackProgress = () => {
-      if (stackProgressRaf) return;
-      stackProgressRaf = requestAnimationFrame(() => renderStackProgress());
-    };
-    window.addEventListener("scroll", queueStackProgress, { passive: true });
-    window.addEventListener("resize", queueStackProgress, { passive: true });
-    const canUseStackScrollTrigger = gsapEngine && scrollTriggerEngine && flowStage && !reduceMotion;
-    if (flowStage && !reduceMotion && !canUseStackScrollTrigger) {
-      // Keep the complete stack story working when CDN motion libraries are
-      // unavailable (notably when this page is opened directly with file://).
-      flowStage.classList.add("is-native-stack-scroll");
-    }
-    if (canUseStackScrollTrigger) {
-      gsapEngine.registerPlugin(scrollTriggerEngine);
-      stackScrollTrigger = scrollTriggerEngine.create({
-        trigger: flowStage,
-        start: "top top",
-        end: () => `+=${Math.round(window.innerHeight * 2.6)}`,
-        pin: flowStage,
-        pinSpacing: true,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => renderStackProgress(self.progress),
-        onRefresh: (self) => renderStackProgress(self.progress)
-      });
-      window.addEventListener("load", () => scrollTriggerEngine.refresh(), { once: true });
-      document.fonts?.ready.then(() => scrollTriggerEngine.refresh());
-      requestAnimationFrame(() => {
-        scrollTriggerEngine.refresh();
-        const hashTarget = window.location.hash && document.querySelector(window.location.hash);
-        if (!hashTarget) return;
-        const targetTop = hashTarget === flowStage
-          ? stackScrollTrigger.start
-          : hashTarget.getBoundingClientRect().top + window.scrollY;
-        setScrollPosition(targetTop);
-        if (hashTarget === flowStage) renderStackProgress(0);
-      });
-    } else if (flowStage && !reduceMotion) {
-      requestAnimationFrame(() => {
-        const hashTarget = window.location.hash && document.querySelector(window.location.hash);
-        if (hashTarget === flowStage) {
-          setScrollPosition(flowStage.getBoundingClientRect().top + window.scrollY);
-          renderStackProgress(0);
-          return;
-        }
-        if (hashTarget?.classList.contains("frame")) {
-          setScrollPosition(hashTarget.getBoundingClientRect().top + window.scrollY);
-        }
-        renderStackProgress();
-      });
-    }
-    requestAnimationFrame(() => renderStackProgress());
-
     const sceneSelectors = new Map([
       ["hero", ".hero-meta,.code-label,.hero-title .line,.scroll-cue,.hero-description"],
       ["about", ".section-label,.statement-side,.statement-copy,.principle"],
@@ -1107,6 +911,43 @@
     let activeSceneTimeline = null;
     let heroIdleTimeline = null;
     const profileFrame = frames[profileFrameIndex];
+    const profileIntro = profileFrame?.querySelector(".profile-intro");
+    const profileIntroItems = [...(profileIntro?.querySelectorAll(".profile-intro-item") || [])];
+    let profileIntroPlaying = false;
+    let profileIntroToken = 0;
+    const profileIntroAnimations = [];
+    const clearProfileIntro = () => {
+      profileIntroToken += 1;
+      profileIntroAnimations.forEach((animation) => animation.cancel());
+      profileIntroAnimations.length = 0;
+      profileIntroPlaying = false;
+      if (profileIntro) profileIntro.style.visibility = "hidden";
+    };
+    const playProfileIntro = () => {
+      if (!profileIntro || reduceMotion || profileIntroPlaying || intro?.isConnected) return;
+      clearProfileIntro();
+      profileIntroPlaying = true;
+      profileIntro.style.visibility = "visible";
+      const token = profileIntroToken;
+      if (!profileIntro.animate) {
+        clearProfileIntro();
+        return;
+      }
+      profileIntroItems.forEach((item, index) => {
+        profileIntroAnimations.push(item.animate([
+          { opacity: 0, transform: "translate3d(0,105%,0)" },
+          { opacity: 1, transform: "translate3d(0,0,0)" }
+        ], { delay: 90 + index * 170, duration: 710, easing: "cubic-bezier(.18,.86,.24,1)", fill: "both" }));
+      });
+      const exit = profileIntro.animate([
+        { transform: "translate3d(0,0,0)" },
+        { transform: "translate3d(0,-105%,0)" }
+      ], { delay: 1660, duration: 620, easing: "cubic-bezier(.76,0,.24,1)", fill: "both" });
+      profileIntroAnimations.push(exit);
+      exit.finished.then(() => {
+        if (token === profileIntroToken) clearProfileIntro();
+      }).catch(() => {});
+    };
     const animateScene = (frame, direction = 1) => {
       if (!frame) return;
       siteHeader?.classList.toggle("is-on-light", frame === flowStage || frame.id === "works" || frame.id === "profile");
@@ -1463,6 +1304,8 @@
           stackMontage.style.visibility = "hidden";
         }
       }
+      if (frame === profileFrame) playProfileIntro();
+      else if (previousIndex === profileFrameIndex) clearProfileIntro();
     };
 
     const syncSceneFromViewport = (force = false) => {
@@ -1484,17 +1327,13 @@
     const alignFrame = (index) => {
       const frame = frames[index];
       if (!frame) return;
-      const top = frame === flowStage && stackScrollTrigger
-        ? stackScrollTrigger.start
-        : frame.getBoundingClientRect().top + window.scrollY;
+      const top = frame.getBoundingClientRect().top + window.scrollY;
       setScrollPosition(top);
     };
 
     const goToFrame = (targetIndex, direction, gestureVelocity = 0) => {
       const target = frames[targetIndex];
       if (!target) return;
-      stackEndHolding = false;
-      smoothScroll?.stop();
       stopAmbientFrameFlash();
       frameTransitionToken += 1;
       const token = frameTransitionToken;
@@ -1503,7 +1342,6 @@
         alignFrame(targetIndex);
         activateFrameScene(targetIndex, direction, true);
         if (target === accentFrame) revealAboutAccent();
-        smoothScroll?.start();
         return;
       }
 
@@ -1575,73 +1413,10 @@
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
-        smoothScroll?.start();
         if (target === accentFrame) revealAboutAccent();
       };
       requestAnimationFrame(renderTransition);
     };
-
-    // At the stack's actual end, absorb the tail of the current trackpad
-    // gesture. A discrete mouse wheel has no release event, so its next
-    // notch can advance even when the notches are less than 300ms apart.
-    const stackHandoffReleaseDelay = 300;
-    const isDiscreteWheelNotch = (event) => {
-      if (event.deltaMode !== 0) return true;
-      const wheelDelta = Math.abs(event.wheelDeltaY || 0);
-      return wheelDelta >= 120 && wheelDelta % 120 === 0;
-    };
-    const handleProfileSnapInput = (event) => {
-      if (reduceMotion || profileFrameIndex < 0 || !event.deltaY || event.defaultPrevented) return;
-      const direction = Math.sign(event.deltaY);
-      const previousFrame = frames[profileFrameIndex - 1];
-      const profileTop = profileFrame.getBoundingClientRect().top + window.scrollY;
-      const previousTop = previousFrame?.getBoundingClientRect().top + window.scrollY;
-      if (!previousFrame) return;
-      const entering = direction > 0 && window.scrollY >= previousTop - 28 && window.scrollY < profileTop - 2;
-      const leaving = direction < 0 && Math.abs(window.scrollY - profileTop) < 3;
-      if (!entering && !leaving) return;
-      event.preventDefault();
-      if (frameWheelLocked) return;
-      goToFrame(entering ? profileFrameIndex : profileFrameIndex - 1, direction, event.deltaY);
-    };
-    const handleStackHandoffInput = (event, direction) => {
-      if (reduceMotion || !flowStage || !direction) return false;
-      // Do not let the tail of a trackpad gesture alter scroll position while
-      // the cover transition is aligning the destination frame.
-      if (frameWheelLocked) {
-        event.preventDefault();
-        return true;
-      }
-      const bounds = stackScrollBounds();
-      if (!bounds) return false;
-      const now = performance.now();
-      const freshGesture = now - lastStackWheelAt > stackHandoffReleaseDelay;
-      const atCompletedStackEnd = Math.abs(window.scrollY - bounds.end) <= Math.max(8, window.innerHeight * .025);
-
-      if (!atCompletedStackEnd || direction < 0) {
-        if (stackEndHolding) smoothScroll?.start();
-        stackEndHolding = false;
-        if (window.scrollY >= bounds.start - 8 && window.scrollY <= bounds.end + 8) lastStackWheelAt = now;
-        return false;
-      }
-
-      event.preventDefault();
-      lastStackWheelAt = now;
-      if (freshGesture || (stackEndHolding && isDiscreteWheelNotch(event))) {
-        goToFrame(flowStageIndex + 1, 1, event.deltaY || 0);
-        return true;
-      }
-
-      stackEndHolding = true;
-      smoothScroll?.stop();
-      setScrollPosition(bounds.end, true);
-      queueStackProgress();
-      return true;
-    };
-    window.addEventListener("wheel", (event) => {
-      handleStackHandoffInput(event, event.deltaY);
-      handleProfileSnapInput(event);
-    }, { capture: true, passive: false });
 
     document.querySelectorAll('a[href^="#"]').forEach((link) => {
       link.addEventListener("click", (event) => {
@@ -1656,53 +1431,11 @@
       });
     });
 
-    // Snap ordinary full-screen frames after a gesture settles. The
-    // technology frame is intentionally excluded: its pinned scrub and
-    // completion handoff own that section's scroll behavior.
-    const snapFrames = frames.filter((frame) => frame !== flowStage);
-    let frameSnapTimer = 0;
-    let lastEditorialScrollY = window.scrollY;
-    let editorialScrollDirection = 0;
-    const snapNearestEditorialFrame = () => {
-      frameSnapTimer = 0;
-      if (frameWheelLocked || body.classList.contains("is-transitioning") || isInsideStackScroll() || stackEndHolding) return;
-      if (profileFrame && !reduceMotion) {
-        const profileTop = profileFrame.getBoundingClientRect().top + window.scrollY;
-        const profileEnd = profileTop + profileFrame.offsetHeight - window.innerHeight;
-        if (window.scrollY >= profileTop - 2 && window.scrollY <= profileEnd + 2) return;
-      }
-      let nearest = null;
-      let nearestTop = 0;
-      let nearestDistance = Infinity;
-      snapFrames.forEach((frame) => {
-        if (frame === profileFrame && editorialScrollDirection < 0 && window.scrollY < frame.offsetTop) return;
-        const top = frame.getBoundingClientRect().top + window.scrollY;
-        const distance = Math.abs(top - window.scrollY);
-        if (distance >= nearestDistance) return;
-        nearest = frame;
-        nearestTop = top;
-        nearestDistance = distance;
-      });
-      if (!nearest || nearestDistance < 3 || nearestDistance > window.innerHeight * .52) return;
-      setScrollPosition(nearestTop, false);
-    };
-    const queueEditorialFrameSnap = () => {
-      const scrollDelta = window.scrollY - lastEditorialScrollY;
-      if (Math.abs(scrollDelta) > 1) editorialScrollDirection = Math.sign(scrollDelta);
-      lastEditorialScrollY = window.scrollY;
-      clearTimeout(frameSnapTimer);
-      frameSnapTimer = window.setTimeout(snapNearestEditorialFrame, 180);
-    };
-    window.addEventListener("scroll", queueEditorialFrameSnap, { passive: true });
-    window.addEventListener("scrollend", queueEditorialFrameSnap, { passive: true });
-
-    // Wheel, trackpad, keyboard and touch retain their native continuous scroll
-    // outside the editorial snaps and the completed stack handoff.
+    // The browser snaps every full-screen frame without a second timer or wheel interception.
     window.addEventListener("scrollend", queueSceneSync, { passive: true });
 
     window.addEventListener("resize", () => {
       if (!frameWheelLocked) {
-        if (stackScrollTrigger) stackScrollTrigger.refresh();
         queueSceneSync();
       }
     }, { passive: true });
