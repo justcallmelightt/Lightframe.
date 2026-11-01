@@ -483,11 +483,16 @@
     .contact-bottom { display: flex; align-items: end; justify-content: space-between; gap: 30px; padding-top: clamp(26px,7vh,64px); }
     .contact-details { display: grid; justify-items: start; gap: clamp(16px,3vh,28px); }
     .contact-copy { max-width: 450px; color: var(--muted); font-size: 1rem; letter-spacing: -.006em; line-height: 1.72; }
-    .contact-links { display: flex; flex-wrap: wrap; align-items: center; column-gap: clamp(18px,2.4vw,34px); row-gap: 2px; }
-    .contact-secondary { display: inline-flex; min-height: 44px; align-items: center; gap: 22px; color: #fff; font-size: .86rem; font-weight: 600; letter-spacing: -.015em; text-decoration: underline; text-decoration-color: rgba(255,255,255,.45); text-underline-offset: 7px; transition: opacity 180ms ease, transform 180ms var(--out); }
+    .contact-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .contact-secondary { display: inline-flex; min-height: 42px; padding: 0 13px; align-items: center; gap: 18px; color: var(--social-ink,#fff); background: var(--social-bg,#fff); border-radius: 8px; font-size: .86rem; font-weight: 650; letter-spacing: -.015em; text-decoration: none; transition: filter 180ms ease, transform 180ms var(--out); }
+    .contact-velog { --social-bg: #12b886; --social-ink: #062820; }
+    .contact-linkedin { --social-bg: #0a66c2; --social-ink: #fff; }
+    .contact-threads { --social-bg: #fff; --social-ink: #050505; }
+    .contact-instagram { --social-bg: linear-gradient(110deg,#833ab4 0%,#c13584 35%,#e1306c 62%,#f77737 100%); --social-ink: #fff; }
     .contact-secondary span { display: inline-block; transition: transform 180ms var(--out); }
     .contact-secondary:hover span { transform: translate(3px,-3px); }
-    .contact-secondary:active { opacity: .65; transform: scale(.97); transition-duration: 60ms; }
+    .contact-secondary:hover { filter: brightness(1.12); }
+    .contact-secondary:active { filter: brightness(.84); transform: scale(.97); transition-duration: 60ms; }
     .contact-secondary:focus-visible, .magnetic:focus-visible { outline: 2px solid #fff; outline-offset: 6px; }
     .magnetic { display: grid; width: clamp(132px,14vw,180px); height: clamp(132px,14vw,180px); flex: 0 0 auto; place-items: center; color: #050505; background: #fff; border-radius: 50%; box-shadow: none; transition: box-shadow 220ms ease; will-change: transform; }
     .magnetic:hover, .magnetic:focus-visible { box-shadow: 0 0 0 1px rgba(255,255,255,.5), 0 0 22px 5px rgba(255,255,255,.16); }
@@ -603,6 +608,8 @@
       .contact { height: 100svh; min-height: 100svh; padding-top: 84px; padding-bottom: 18px; }
       .contact { padding-inline: 14px; }
       .contact-bottom { align-items: flex-start; flex-direction: column; }
+      .contact-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(100%, 360px); }
+      .contact-secondary { justify-content: space-between; }
       .magnetic { align-self: flex-end; }
       .footer-line span:last-child { display: none; }
     }
