@@ -33,22 +33,37 @@
         let lastBlinkFrame = 0;
         let pulses = [];
         let lightCells = [];
-        const pointerLight = { x: 0, y: 0, strength: 0, target: 0, startedAt: 0 };
+        const pointerLight = { x: 0, y: 0, strength: 0, target: 0, startedAt: 0, rgb: [255, 255, 255] };
         const githubButton = contact.querySelector(".magnetic");
-        const setButtonLight = (active) => {
-          if (active && !pointerLight.target) pointerLight.startedAt = performance.now();
+        let activeLightButton = null;
+        const lightButtons = [
+          [githubButton, [255, 255, 255]],
+          [contact.querySelector(".contact-velog"), [18, 184, 134]],
+          [contact.querySelector(".contact-linkedin"), [10, 102, 194]],
+          [contact.querySelector(".contact-threads"), [191, 199, 216]],
+          [contact.querySelector(".contact-instagram"), [225, 48, 108]]
+        ];
+        const setButtonLight = (button, rgb, active) => {
+          if (!active && activeLightButton !== button) return;
+          if (active) {
+            activeLightButton = button;
+            pointerLight.rgb = rgb;
+            pointerLight.startedAt = performance.now();
+          } else activeLightButton = null;
           pointerLight.target = active ? 1 : 0;
           const rect = contact.getBoundingClientRect();
-          const buttonRect = githubButton?.getBoundingClientRect();
+          const buttonRect = button?.getBoundingClientRect();
           pointerLight.x = buttonRect ? buttonRect.left + buttonRect.width / 2 - rect.left : 0;
           pointerLight.y = buttonRect ? buttonRect.top + buttonRect.height / 2 - rect.top : 0;
-          drawBase();
+          if (active) drawBase();
           if (reduceMotion) syncBlink();
         };
-        githubButton?.addEventListener("pointerenter", () => setButtonLight(true));
-        githubButton?.addEventListener("pointerleave", () => setButtonLight(false));
-        githubButton?.addEventListener("focus", () => setButtonLight(true));
-        githubButton?.addEventListener("blur", () => setButtonLight(false));
+        lightButtons.forEach(([button, rgb]) => {
+          button?.addEventListener("pointerenter", () => setButtonLight(button, rgb, true));
+          button?.addEventListener("pointerleave", () => setButtonLight(button, rgb, false));
+          button?.addEventListener("focus", () => setButtonLight(button, rgb, true));
+          button?.addEventListener("blur", () => setButtonLight(button, rgb, false));
+        });
         const noise = (x, y) => {
           let hash = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263);
           hash = Math.imul(hash ^ (hash >>> 13), 1274126177);
@@ -91,12 +106,13 @@
               const falloff = 1 / (1 + Math.pow(distance / lightSpread, 2));
               const scatteredLight = .55 + fieldNoise(column * .17 + 71, row * .15 + 29) * .45;
               const activeTone = Math.min(245, tone + Math.round(154 * falloff * scatteredLight));
-              activeContext.fillStyle = `rgb(${activeTone},${activeTone},${activeTone})`;
+              const activeAlpha = Math.min(.82, (activeTone - tone) / (255 - tone));
+              activeContext.fillStyle = `rgb(${pointerLight.rgb.map((channel) => Math.round(tone * (1 - activeAlpha) + channel * activeAlpha)).join(",")})`;
               activeContext.fillRect(column * pitch, row * pitch, size, size);
               lightCells.push({
                 x: column * pitch,
                 y: row * pitch,
-                gain: Math.min(.82, (activeTone - tone) / (255 - tone)),
+                gain: activeAlpha,
                 delay: distance / maxDistance * 1600 + (noise(column + 193, row + 337) - .5) * 240
               });
             }
@@ -110,7 +126,7 @@
           contactSquares.height = base.height = activeBase.height = Math.max(1, Math.ceil(rect.height));
           columns = Math.ceil(base.width / pitch);
           rows = Math.ceil(base.height / pitch);
-          const buttonRect = githubButton?.getBoundingClientRect();
+          const buttonRect = (activeLightButton || githubButton)?.getBoundingClientRect();
           pointerLight.x = buttonRect ? buttonRect.left + buttonRect.width / 2 - rect.left : 0;
           pointerLight.y = buttonRect ? buttonRect.top + buttonRect.height / 2 - rect.top : 0;
           const pulseCount = Math.min(2200, Math.max(180, Math.round(columns * rows * .08)));
@@ -143,7 +159,7 @@
               const departure = 1 - ease((elapsed - 2050 - cell.delay) / 700);
               const alpha = cell.gain * arrival * departure * pointerLight.strength;
               if (alpha < .008) return;
-              context.fillStyle = `rgba(255,255,255,${alpha})`;
+              context.fillStyle = `rgba(${pointerLight.rgb.join(",")},${alpha})`;
               context.fillRect(cell.x, cell.y, tileSize, tileSize);
             });
           }

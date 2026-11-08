@@ -483,15 +483,17 @@
     .contact-details { display: grid; justify-items: start; gap: clamp(16px,3vh,28px); }
     .contact-copy { max-width: 450px; color: var(--muted); font-size: 1rem; letter-spacing: -.006em; line-height: 1.72; }
     .contact-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .contact-secondary { display: inline-flex; min-height: 42px; padding: 0 13px; align-items: center; gap: 18px; color: var(--social-ink,#fff); background: var(--social-bg,#fff); border-radius: 8px; font-size: .86rem; font-weight: 650; letter-spacing: -.015em; text-decoration: none; transition: filter 180ms ease, transform 180ms var(--out); }
-    .contact-velog { --social-bg: #12b886; --social-ink: #062820; }
-    .contact-linkedin { --social-bg: #0a66c2; --social-ink: #fff; }
-    .contact-threads { --social-bg: #000; --social-ink: #fff; border: 1px solid rgba(255,255,255,.3); }
-    .contact-instagram { --social-bg: linear-gradient(115deg,#405de6 0%,#833ab4 23%,#c13584 45%,#e1306c 65%,#f77737 84%,#fcaf45 100%); --social-ink: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
-    .contact-secondary span { display: inline-block; transition: transform 180ms var(--out); }
-    .contact-secondary:hover span { transform: translate(3px,-3px); }
-    .contact-secondary:hover { filter: brightness(1.12); }
-    .contact-secondary:active { filter: brightness(.84); transform: scale(.97); transition-duration: 60ms; }
+    .contact-secondary { position: relative; isolation: isolate; display: inline-flex; min-height: 46px; padding: 0 15px; align-items: center; gap: 16px; overflow: hidden; color: var(--social-ink,#fff); background: var(--social-bg,#fff); border-radius: 12px; font-size: .86rem; font-weight: 600; letter-spacing: -.012em; text-decoration: none; box-shadow: inset 0 1px rgba(255,255,255,.2), 0 0 0 1px transparent; transition: filter 180ms ease, transform 260ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms ease; }
+    .contact-secondary::before { content: ""; position: absolute; z-index: 0; inset: 0; pointer-events: none; background: linear-gradient(105deg,transparent 15%,rgba(255,255,255,.22) 50%,transparent 85%); opacity: 0; transform: translateX(-100%); transition: opacity 180ms ease, transform 500ms cubic-bezier(.2,.8,.2,1); }
+    .contact-velog { --social-bg: #12b886; --social-ink: #fff; --social-glow: rgba(18,184,134,.5); --social-rim: rgba(87,244,197,.7); }
+    .contact-linkedin { --social-bg: #0a66c2; --social-ink: #fff; --social-glow: rgba(10,102,194,.55); --social-rim: rgba(92,171,252,.75); }
+    .contact-threads { --social-bg: #000; --social-ink: #fff; --social-glow: rgba(191,199,216,.34); --social-rim: rgba(220,225,237,.7); border: 1px solid rgba(255,255,255,.3); }
+    .contact-instagram { --social-bg: linear-gradient(115deg,#405de6 0%,#833ab4 23%,#c13584 45%,#e1306c 65%,#f77737 84%,#fcaf45 100%); --social-ink: #fff; --social-glow: rgba(225,48,108,.5); --social-rim: rgba(255,163,100,.75); text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+    .contact-secondary span { display: inline-block; transition: transform 220ms cubic-bezier(.2,.8,.2,1); }
+    .contact-secondary:hover span, .contact-secondary:focus-visible span { transform: translate(3px,-3px); }
+    .contact-secondary:hover::before, .contact-secondary:focus-visible::before { opacity: 1; transform: translateX(100%); }
+    .contact-secondary:hover, .contact-secondary:focus-visible { filter: brightness(1.08); transform: translateY(-5px) scale(1.025); box-shadow: inset 0 1px rgba(255,255,255,.35), 0 0 0 1px var(--social-rim), 0 0 24px 4px var(--social-glow), 0 12px 24px rgba(0,0,0,.32); }
+    .contact-secondary:active { filter: brightness(.92); transform: translateY(-1px) scale(.97); box-shadow: inset 0 1px rgba(255,255,255,.18), 0 0 0 1px var(--social-rim), 0 0 12px 2px var(--social-glow); transition-duration: 60ms; }
     .contact-secondary:focus-visible, .magnetic:focus-visible { outline: 2px solid #fff; outline-offset: 6px; }
     .magnetic { display: grid; width: clamp(132px,14vw,180px); height: clamp(132px,14vw,180px); flex: 0 0 auto; place-items: center; color: #050505; background: #fff; border-radius: 50%; box-shadow: none; transition: box-shadow 220ms ease; will-change: transform; }
     .magnetic:hover, .magnetic:focus-visible { box-shadow: 0 0 0 1px rgba(255,255,255,.5), 0 0 22px 5px rgba(255,255,255,.16); }
