@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
   <title>Lightframe. — 일상의 문제를 웹으로 정리합니다</title>
-  <link rel="stylesheet" href="./styles.css?v=20261028-profile-panel-contain-1" />
+  <link rel="stylesheet" href="./styles.css?v=20261108-social-brand-colors-1" />
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
@@ -60,9 +60,9 @@
       <div class="now-grid">
         <h2 class="now-title reveal" id="now-title" data-flow-text>요즘의<br /><span class="muted">관심.</span></h2>
         <div class="interest-list">
-          <article class="interest"><div class="interest-meta"><span>01 / PRODUCT</span><span>NOW</span></div><h3>매일 쓰는 웹</h3><p>시간표처럼 자주 확인하는 정보를 더 빠르고 편안하게 보는 방법을 실험합니다. Tile을 만들며 실제 사용에서 답을 찾고 있습니다.</p></article>
-          <article class="interest"><div class="interest-meta"><span>02 / INTERACTION</span><span>ONGOING</span></div><h3>느껴지는 인터랙션</h3><p>눈에 띄기 위한 움직임보다, 사용자의 손과 화면 사이가 자연스럽게 이어지는 반응을 좋아합니다.</p></article>
-          <article class="interest"><div class="interest-meta"><span>03 / LEARNING</span><span>EVERYDAY</span></div><h3>배우고 바로 만들기</h3><p>새로 배운 것은 작은 도구로 구현해 봅니다. 그렇게 쌓인 경험을 다시 다음 문제를 푸는 데 사용합니다.</p></article>
+          <article class="interest"><div class="interest-meta"><span>NOW</span></div><h3>매일 쓰는 웹</h3><p>시간표처럼 자주 확인하는 정보를 더 빠르고 편안하게 보는 방법을 실험합니다. Tile을 만들며 실제 사용에서 답을 찾고 있습니다.</p></article>
+          <article class="interest"><div class="interest-meta"><span>ONGOING</span></div><h3>느껴지는 인터랙션</h3><p>눈에 띄기 위한 움직임보다, 사용자의 손과 화면 사이가 자연스럽게 이어지는 반응을 좋아합니다.</p></article>
+          <article class="interest"><div class="interest-meta"><span>EVERYDAY</span></div><h3>배우고 바로 만들기</h3><p>새로 배운 것은 작은 도구로 구현해 봅니다. 그렇게 쌓인 경험을 다시 다음 문제를 푸는 데 사용합니다.</p></article>
         </div>
       </div>
     </section>
@@ -105,10 +105,10 @@
   <section class="profile-frame frame" id="profile" aria-labelledby="profile-title" data-frame-name="기록" data-frame-color="#8100ff" data-frame-ink="#ffffff">
     <div class="profile-stage">
     <div class="profile-intro" aria-hidden="true">
-      <div class="profile-intro-item"><span>01 / AWARDS</span><strong>03</strong><em>수상</em></div>
-      <div class="profile-intro-item"><span>02 / EXPERIENCE</span><strong>08</strong><em>참여 · 수료</em></div>
-      <div class="profile-intro-item"><span>03 / EDUCATION</span><strong>04</strong><em>학력</em></div>
-      <p>LIGHTFRAME. / RECORDS</p>
+      <div class="profile-intro-count">
+        <div class="profile-count-digits"><span class="profile-count-window"><span class="profile-count-wheel" data-place="tens"></span></span><span class="profile-count-window"><span class="profile-count-wheel" data-place="ones"></span></span></div>
+        <span class="profile-intro-caption">쌓여 온 기록</span>
+      </div>
     </div>
     <div class="profile-inner">
       <div class="profile-heading">
@@ -123,18 +123,18 @@
           <button class="profile-tab" type="button" role="tab" id="profile-tab-certifications" aria-controls="profile-panel-certifications" aria-selected="false" tabindex="-1">자격증 <span>01</span></button>
         </div>
         <div class="profile-panel" id="profile-panel-awards" role="tabpanel" aria-labelledby="profile-tab-awards" tabindex="0" data-lenis-prevent>
-          <article class="profile-record"><span>2026. 03. 06 · 미림마이스터고등학교</span><h3>신입생 적응교육과정<br />소프트웨어부문 우수상</h3><p>1학년 108명 대상 · 학과당 우수 2명 선발</p></article>
-          <article class="profile-record"><span>모두의 창업</span><h3>우수상</h3><p>팀으로 참여해 받은 상</p></article>
-          <article class="profile-record"><span>서울하늘숲초등학교</span><h3>IT상</h3><p>초등학교 졸업 시 수상</p></article>
+          <article class="profile-record"><span>2026. 03. 06 · 미림마이스터고등학교</span><h3>신입생 적응교육과정<br />소프트웨어부문 우수상</h3><p>1학년 108명 대상</p></article>
+          <article class="profile-record"><span>모두의 창업</span><h3>우수상</h3><p>팀 수상</p></article>
+          <article class="profile-record"><span>서울하늘숲초등학교</span><h3>IT상</h3><p>초등학교 졸업 수상</p></article>
         </div>
         <div class="profile-panel" id="profile-panel-activities" role="tabpanel" aria-labelledby="profile-tab-activities" tabindex="0" data-lenis-prevent hidden>
           <article class="profile-record"><h3>한양대학교와 함께하는 2026 전국 청소년 SW·AI 경진대회</h3><div class="profile-record-facts"><span class="profile-record-role">팀장 · Full Stack 개발</span></div><span>한양대학교 ERICA · 2026</span><p>인원 · 2명</p></article>
           <article class="profile-record"><h3>미톤(MITHON)</h3><div class="profile-record-facts"><span class="profile-record-role">팀장 · Full-Stack 개발</span></div><span>미림마이스터고등학교 · 소프트웨어 챌린지</span><p>인원 · 3명</p></article>
           <article class="profile-record"><h3>창업아이템경진대회</h3><div class="profile-record-facts"><span class="profile-record-status">수료</span></div><span>미림마이스터고등학교</span><p>인원 · 1명</p></article>
-          <article class="profile-record"><h3>창의아이디어경진대회</h3></article>
+          <article class="profile-record"><h3>창의아이디어경진대회</h3><div class="profile-record-facts"><span class="profile-record-status">수료</span></div><span>미림마이스터고등학교</span></article>
           <article class="profile-record"><h3>AI지니어스 아카데미</h3><div class="profile-record-facts"><span class="profile-record-status">수료</span></div><span>LG CNS</span><p>인원 · 4명</p></article>
           <article class="profile-record"><h3>미디어통</h3><div class="profile-record-facts"><span class="profile-record-status">수료</span></div><span>구로구청</span></article>
-          <article class="profile-record"><h3>모두의 창업</h3><div class="profile-record-facts"><span class="profile-record-role">팀 · 개인 참여</span><span class="profile-record-status">개인 수료</span></div><span>관악중소벤처진흥원</span></article>
+          <article class="profile-record"><h3>모두의 창업</h3><div class="profile-record-facts"><span class="profile-record-role">팀 · 개인 참여</span><span class="profile-record-status">팀 수상 · 개인 수료</span></div><span>관악중소벤처진흥원</span></article>
           <article class="profile-record"><h3>제12회 별별 책소리 한마당</h3><div class="profile-record-facts"><span class="profile-record-status">수료</span></div><span>서울특별시동작관악교육지원청</span></article>
         </div>
         <div class="profile-panel" id="profile-panel-education" role="tabpanel" aria-labelledby="profile-tab-education" tabindex="0" data-lenis-prevent hidden>
@@ -144,7 +144,7 @@
           <article class="profile-record"><span>전학</span><h3>서울오류남초등학교</h3></article>
         </div>
         <div class="profile-panel" id="profile-panel-certifications" role="tabpanel" aria-labelledby="profile-tab-certifications" tabindex="0" data-lenis-prevent hidden>
-          <article class="profile-record"><span>Microsoft Office Specialist</span><h3>Excel Associate<br />(Microsoft 365 Apps)</h3><p>MOS 자격증</p></article>
+          <article class="profile-record"><span>Microsoft Office Specialist</span><h3>Excel Associate<br />(Microsoft 365 Apps)</h3></article>
         </div>
         <p class="profile-scroll-hint" hidden>↓ 아래로 스크롤하면 나머지 기록이 이어집니다.</p>
       </div>
@@ -176,6 +176,6 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.11/dist/lenis.min.js"></script>
-  <script src="./script.js?v=20261028-all-frame-snap-1"></script>
+  <script src="./script.js?v=20261102-record-roll-1"></script>
 </body>
 </html>

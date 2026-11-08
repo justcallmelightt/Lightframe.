@@ -921,12 +921,28 @@
     let heroIdleTimeline = null;
     const profileFrame = frames[profileFrameIndex];
     const profileIntro = profileFrame?.querySelector(".profile-intro");
-    const profileIntroItems = [...(profileIntro?.querySelectorAll(".profile-intro-item") || [])];
+    const profileIntroCount = profileIntro?.querySelector(".profile-intro-count");
+    const profileTotal = profileFrame?.querySelectorAll(".profile-panel .profile-record").length || 0;
+    const profileTens = profileIntro?.querySelector('[data-place="tens"]');
+    const profileOnes = profileIntro?.querySelector('[data-place="ones"]');
+    const buildProfileWheel = (wheel, limit) => {
+      if (!wheel) return;
+      wheel.replaceChildren(...Array.from({ length: limit + 1 }, (_, index) => {
+        const row = document.createElement("span");
+        row.textContent = String(index % 10);
+        return row;
+      }));
+    };
+    buildProfileWheel(profileTens, Math.floor(profileTotal / 10));
+    buildProfileWheel(profileOnes, profileTotal);
     let profileIntroPlaying = false;
     let profileIntroToken = 0;
+    let profileCountFrame = 0;
     const profileIntroAnimations = [];
     const clearProfileIntro = () => {
       profileIntroToken += 1;
+      cancelAnimationFrame(profileCountFrame);
+      profileCountFrame = 0;
       profileIntroAnimations.forEach((animation) => animation.cancel());
       profileIntroAnimations.length = 0;
       profileIntroPlaying = false;
@@ -942,16 +958,35 @@
         clearProfileIntro();
         return;
       }
-      profileIntroItems.forEach((item, index) => {
-        profileIntroAnimations.push(item.animate([
-          { opacity: 0, transform: "translate3d(0,105%,0)" },
-          { opacity: 1, transform: "translate3d(0,0,0)" }
-        ], { delay: 90 + index * 170, duration: 710, easing: "cubic-bezier(.18,.86,.24,1)", fill: "both" }));
+      [profileTens, profileOnes].forEach((wheel) => {
+        if (!wheel) return;
+        wheel.style.transition = "none";
+        wheel.style.transform = "translate3d(0,0,0)";
       });
+      const rowHeight = profileOnes?.querySelector("span")?.getBoundingClientRect().height || 0;
+      const countStart = performance.now() + 230;
+      let lastValue = -1;
+      const rollCount = (now) => {
+        if (token !== profileIntroToken || !rowHeight) return;
+        const progress = Math.min(1, Math.max(0, (now - countStart) / 1550));
+        const value = Math.min(profileTotal, Math.floor(profileTotal * progress));
+        if (value !== lastValue) {
+          [profileTens, profileOnes].forEach((wheel) => { if (wheel) wheel.style.transition = ""; });
+          if (profileTens) profileTens.style.transform = `translate3d(0,${-Math.floor(value / 10) * rowHeight}px,0)`;
+          if (profileOnes) profileOnes.style.transform = `translate3d(0,${-value * rowHeight}px,0)`;
+          lastValue = value;
+        }
+        if (progress < 1) profileCountFrame = requestAnimationFrame(rollCount);
+      };
+      profileCountFrame = requestAnimationFrame(rollCount);
+      profileIntroAnimations.push(profileIntroCount.animate([
+        { opacity: 0, transform: "translate3d(0,22px,0)" },
+        { opacity: 1, transform: "translate3d(0,0,0)" }
+      ], { duration: 420, easing: "cubic-bezier(.18,.86,.24,1)", fill: "both" }));
       const exit = profileIntro.animate([
         { transform: "translate3d(0,0,0)" },
         { transform: "translate3d(0,-105%,0)" }
-      ], { delay: 1660, duration: 620, easing: "cubic-bezier(.76,0,.24,1)", fill: "both" });
+      ], { delay: 2600, duration: 620, easing: "cubic-bezier(.76,0,.24,1)", fill: "both" });
       profileIntroAnimations.push(exit);
       exit.finished.then(() => {
         if (token === profileIntroToken) clearProfileIntro();
