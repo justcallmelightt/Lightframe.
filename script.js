@@ -553,17 +553,19 @@
     const runPrincipleSweep = () => {
       if (reduceMotion || !principleRows.length) return;
       stopPrincipleSweep();
+      const welcomeDelay = 600;
       principleRows.forEach((row, index) => {
         principleSweepTimers.push(setTimeout(() => {
           if (!row.matches(":hover")) row.classList.add("is-sweeping");
-        }, index * 260));
-        principleSweepTimers.push(setTimeout(() => row.classList.remove("is-sweeping"), index * 260 + 340));
+        }, welcomeDelay + index * 260));
+        principleSweepTimers.push(setTimeout(() => row.classList.remove("is-sweeping"), welcomeDelay + index * 260 + 340));
       });
     };
     if (principles) {
       let principlesWereVisible = false;
       const principleObserver = new IntersectionObserver(([entry]) => {
         if (entry.isIntersecting && !principlesWereVisible) requestAnimationFrame(runPrincipleSweep);
+        if (!entry.isIntersecting) stopPrincipleSweep();
         principlesWereVisible = entry.isIntersecting;
       }, { threshold: .55 });
       principleObserver.observe(aboutFrame || principles);
