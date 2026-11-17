@@ -943,16 +943,16 @@
     const profileTotal = profileFrame?.querySelectorAll(".profile-panel .profile-record").length || 0;
     const profileTens = profileIntro?.querySelector('[data-place="tens"]');
     const profileOnes = profileIntro?.querySelector('[data-place="ones"]');
-    const buildProfileWheel = (wheel, limit) => {
+    const buildProfileWheel = (wheel, lastRow, digitForValue) => {
       if (!wheel) return;
-      wheel.replaceChildren(...Array.from({ length: limit + 1 }, (_, index) => {
+      wheel.replaceChildren(...Array.from({ length: lastRow + 1 }, (_, index) => {
         const row = document.createElement("span");
-        row.textContent = String(index % 10);
+        row.textContent = String(digitForValue(index));
         return row;
       }));
     };
-    buildProfileWheel(profileTens, Math.floor(profileTotal / 10));
-    buildProfileWheel(profileOnes, profileTotal);
+    buildProfileWheel(profileTens, Math.floor(profileTotal / 10), (place) => place % 10);
+    buildProfileWheel(profileOnes, profileTotal, (value) => value % 10);
     let profileIntroPlaying = false;
     let profileIntroToken = 0;
     let profileCountFrame = 0;
@@ -989,9 +989,15 @@
         const progress = Math.min(1, Math.max(0, (now - countStart) / 1550));
         const value = Math.min(profileTotal, Math.floor(profileTotal * progress));
         if (value !== lastValue) {
-          [profileTens, profileOnes].forEach((wheel) => { if (wheel) wheel.style.transition = ""; });
-          if (profileTens) profileTens.style.transform = `translate3d(0,${-Math.floor(value / 10) * rowHeight}px,0)`;
-          if (profileOnes) profileOnes.style.transform = `translate3d(0,${-value * rowHeight}px,0)`;
+          const tens = Math.floor(value / 10);
+          if (profileTens && lastValue >= 0 && tens !== Math.floor(lastValue / 10)) {
+            profileTens.style.transition = "";
+            profileTens.style.transform = `translate3d(0,${-tens * rowHeight}px,0)`;
+          }
+          if (profileOnes) {
+            profileOnes.style.transition = "";
+            profileOnes.style.transform = `translate3d(0,${-value * rowHeight}px,0)`;
+          }
           lastValue = value;
         }
         if (progress < 1) profileCountFrame = requestAnimationFrame(rollCount);
