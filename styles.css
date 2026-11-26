@@ -137,11 +137,11 @@
       inset: -18% -42%;
       z-index: -2;
       background: linear-gradient(102deg,var(--brand-teal) 0%,var(--brand-blue) 15%,var(--brand-violet) 28%,var(--brand-magenta) 42%,var(--brand-pink) 56%,var(--brand-gold) 70%,var(--brand-lilac) 84%,var(--brand-teal) 100%);
-      transform: translate3d(-13%,0,0) scale(1.08) skewX(-5deg);
-      animation: frame-flash-spectrum 2.2s ease-in-out infinite alternate;
+      transform: translate3d(-20%,0,0) scale(1.08);
       content: "";
       will-change: transform;
     }
+    .frame-flash.is-sweeping::before { animation: frame-flash-spectrum 520ms linear 150ms both; }
     .frame-flash::after {
       position: absolute;
       inset: 0;
@@ -155,9 +155,8 @@
     .frame-flash-index { padding-bottom: .08em; font-size: clamp(.8rem,1.2vw,1.05rem); font-weight: 600; letter-spacing: .08em; text-shadow: 0 4px 18px rgba(0,0,0,.3); }
 
     @keyframes frame-flash-spectrum {
-      0% { transform: translate3d(-13%,0,0) scale(1.08) skewX(-5deg); }
-      52% { transform: translate3d(3%,-2%,0) scale(1.13) skewX(2deg); }
-      100% { transform: translate3d(13%,2%,0) scale(1.08) skewX(5deg); }
+      from { transform: translate3d(-20%,0,0) scale(1.08); }
+      to { transform: translate3d(20%,0,0) scale(1.08); }
     }
 
     .site-header {
@@ -419,6 +418,8 @@
     .profile-intro-count { --digit-row: clamp(8rem,22vw,22rem); display: flex; align-items: center; flex-direction: column; gap: clamp(18px,3vh,34px); white-space: nowrap; }
     .profile-count-digits { display: inline-flex; align-items: center; font-size: var(--digit-row); font-weight: 620; line-height: 1; letter-spacing: 0; font-variant-numeric: tabular-nums; }
     .profile-count-window { display: block; width: .72em; height: var(--digit-row); flex: none; overflow: hidden; }
+    .profile-count-window + .profile-count-window { margin-left: -.08em; }
+    .profile-count-digits[data-count="0"] .profile-count-window + .profile-count-window { margin-left: -.04em; }
     .profile-count-wheel { display: flex; flex-direction: column; width: 100%; transition: transform 78ms linear; }
     .profile-count-wheel > span { display: block; height: var(--digit-row); flex: 0 0 var(--digit-row); line-height: var(--digit-row); text-align: center; }
     .profile-intro-caption { color: rgba(255,255,255,.72); font-size: clamp(.9rem,1.4vw,1.25rem); font-weight: 550; letter-spacing: -.02em; }

@@ -940,6 +940,7 @@
     const profileFrame = frames[profileFrameIndex];
     const profileIntro = profileFrame?.querySelector(".profile-intro");
     const profileIntroCount = profileIntro?.querySelector(".profile-intro-count");
+    const profileCountDigits = profileIntroCount?.querySelector(".profile-count-digits");
     const profileTotal = profileFrame?.querySelectorAll(".profile-panel .profile-record").length || 0;
     const profileTens = profileIntro?.querySelector('[data-place="tens"]');
     const profileOnes = profileIntro?.querySelector('[data-place="ones"]');
@@ -981,6 +982,7 @@
         wheel.style.transition = "none";
         wheel.style.transform = "translate3d(0,0,0)";
       });
+      if (profileCountDigits) profileCountDigits.dataset.count = "0";
       const rowHeight = profileOnes?.querySelector("span")?.getBoundingClientRect().height || 0;
       const countStart = performance.now() + 230;
       let lastValue = -1;
@@ -989,6 +991,7 @@
         const progress = Math.min(1, Math.max(0, (now - countStart) / 1550));
         const value = Math.min(profileTotal, Math.floor(profileTotal * progress));
         if (value !== lastValue) {
+          if (profileCountDigits) profileCountDigits.dataset.count = String(value);
           const tens = Math.floor(value / 10);
           if (profileTens && lastValue >= 0 && tens !== Math.floor(lastValue / 10)) {
             profileTens.style.transition = "";
@@ -1314,6 +1317,11 @@
     let activeFrameIndex = -1;
     let ambientFrameFlash = null;
     let ambientFrameFlashToken = 0;
+    const playFrameFlashSweep = () => {
+      frameFlash.classList.remove("is-sweeping");
+      void frameFlash.offsetWidth;
+      frameFlash.classList.add("is-sweeping");
+    };
     const stopAmbientFrameFlash = () => {
       ambientFrameFlashToken += 1;
       if (ambientFrameFlash) ambientFrameFlash.cancel();
@@ -1328,6 +1336,7 @@
       frameFlashName.textContent = target.dataset.frameName || "Lightframe.";
       frameFlashIndex.textContent = `${String(targetIndex + 1).padStart(2,"0")} / ${String(frames.length).padStart(2,"0")}`;
       frameFlash.style.opacity = "1";
+      playFrameFlashSweep();
       ambientFrameFlash = frameFlash.animate([
         { transform: `translate3d(0,${axis * 108}%,0)`, offset: 0 },
         { transform: "translate3d(0,0,0)", offset: .42 },
@@ -1344,6 +1353,7 @@
         ambientFrameFlash = null;
         frameFlash.style.opacity = "0";
         frameFlash.style.transform = `translate3d(0,${axis * -110}%,0)`;
+        frameFlash.classList.remove("is-sweeping");
         if (target === accentFrame) revealAboutAccent();
       }).catch(() => {});
     };
@@ -1421,6 +1431,7 @@
       frameFlashName.textContent = target.dataset.frameName || "Lightframe.";
       frameFlashIndex.textContent = `${String(targetIndex + 1).padStart(2,"0")} / ${String(frames.length).padStart(2,"0")}`;
       frameFlash.style.opacity = "1";
+      playFrameFlashSweep();
       frameFlash.style.transform = `translate3d(0,${direction > 0 ? 110 : -110}%,0)`;
 
       const axis = direction > 0 ? 1 : -1;
@@ -1478,6 +1489,7 @@
         alignFrame(targetIndex);
         frameFlash.style.opacity = "0";
         frameFlash.style.transform = `translate3d(0,${direction > 0 ? -110 : 110}%,0)`;
+        frameFlash.classList.remove("is-sweeping");
         motionSuspended = false;
         body.classList.remove("is-transitioning");
         frameWheelLocked = false;
