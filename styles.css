@@ -417,8 +417,8 @@
     .profile-stage { position: relative; height: 100svh; overflow: hidden; isolation: isolate; }
     .profile-intro { position: absolute; inset: 0; z-index: 9; display: grid; overflow: hidden; place-items: center; background: #07070a; color: #fff; visibility: hidden; pointer-events: none; }
     .profile-intro-count { --digit-row: clamp(8rem,22vw,22rem); display: flex; align-items: center; flex-direction: column; gap: clamp(18px,3vh,34px); white-space: nowrap; }
-    .profile-count-digits { display: inline-flex; align-items: center; font-size: var(--digit-row); font-weight: 620; line-height: 1; letter-spacing: -.09em; font-variant-numeric: tabular-nums; }
-    .profile-count-window { display: block; width: .62em; height: var(--digit-row); flex: none; overflow: hidden; }
+    .profile-count-digits { display: inline-flex; align-items: center; font-size: var(--digit-row); font-weight: 620; line-height: 1; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+    .profile-count-window { display: block; width: .72em; height: var(--digit-row); flex: none; overflow: hidden; }
     .profile-count-wheel { display: flex; flex-direction: column; width: 100%; transition: transform 78ms linear; }
     .profile-count-wheel > span { display: block; height: var(--digit-row); flex: 0 0 var(--digit-row); line-height: var(--digit-row); text-align: center; }
     .profile-intro-caption { color: rgba(255,255,255,.72); font-size: clamp(.9rem,1.4vw,1.25rem); font-weight: 550; letter-spacing: -.02em; }
